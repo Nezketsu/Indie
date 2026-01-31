@@ -1,0 +1,1154 @@
+# PRP — Indie Brands Marketplace
+
+## 📋 Project Overview
+
+**Nom du projet** : IndieMarket (nom temporaire)
+**Objectif** : Créer une marketplace agrégant les produits de marques indépendantes en scrapant leurs boutiques Shopify, permettant aux utilisateurs de découvrir et filtrer des produits par type, genre, marque, prix, etc.
+
+**Stack technique** :
+- **Frontend** : Next.js 14+ (App Router, TypeScript, Tailwind CSS)
+- **Backend API** : Next.js API Routes (données) + Go service (scraping)
+- **Base de données** : PostgreSQL (via Supabase)
+- **Search** : Meilisearch (phase 2)
+- **Déploiement** : Vercel (frontend) + Railway/Fly.io (Go scraper)
+
+---
+
+## 🎯 Objectifs MVP
+
+1. Scraper automatiquement les produits depuis des boutiques Shopify
+2. Stocker les produits dans une base de données normalisée
+3. Afficher les produits avec filtres (catégorie, marque, prix, genre)
+4. Interface responsive et performante
+5. Système de synchronisation périodique des données
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         FRONTEND                                 │
+│                    Next.js 14 (App Router)                       │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
+│  │  Homepage   │  │  Catalogue  │  │  Product Detail Page    │  │
+│  │  (SSG)      │  │  (SSR+ISR)  │  │  (ISR)                  │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
+└─────────────────────────┬───────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      API LAYER                                   │
+│  ┌──────────────────────────┐  ┌─────────────────────────────┐  │
+│  │  Next.js API Routes      │  │  Go Scraper Service         │  │
+│  │  /api/products           │  │  - Shopify API/Scraping     │  │
+│  │  /api/brands             │  │  - Data normalization       │  │
+│  │  /api/categories         │  │  - Cron scheduling          │  │
+│  └────────────┬─────────────┘  └──────────────┬──────────────┘  │
+└───────────────┼──────────────────────────────┼──────────────────┘
+                │                              │
+                ▼                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                       DATA LAYER                                 │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                    PostgreSQL (Supabase)                  │   │
+│  │  - products, brands, categories, variants, images         │   │
+│  │  - JSONB for flexible product metadata                    │   │
+│  │  - Full-text search with pg_trgm                          │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                              │                                   │
+│                              ▼ (Phase 2)                         │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                      Meilisearch                          │   │
+│  │  - Fast faceted search                                    │   │
+│  │  - Typo tolerance                                         │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📁 Structure du projet
+
+```
+indie-marketplace/
+├── apps/
+│   ├── web/                      # Next.js frontend
+│   │   ├── app/
+│   │   │   ├── (marketing)/      # Landing pages
+│   │   │   ├── products/         # Product listing & detail
+│   │   │   ├── brands/           # Brand pages
+│   │   │   └── api/              # API routes
+│   │   ├── components/
+│   │   │   ├── ui/               # Shadcn/ui components
+│   │   │   ├── products/         # Product-specific components
+│   │   │   └── filters/          # Filter components
+│   │   ├── lib/
+│   │   │   ├── db/               # Database queries (Drizzle)
+│   │   │   ├── utils/            # Utility functions
+│   │   │   └── validators/       # Zod schemas
+│   │   └── types/                # TypeScript types
+│   │
+│   └── scraper/                  # Go scraping service
+│       ├── cmd/
+│       │   └── scraper/          # Main entry point
+│       ├── internal/
+│       │   ├── shopify/          # Shopify API client
+│       │   ├── parser/           # HTML/JSON parsers
+│       │   ├── storage/          # Database operations
+│       │   └── scheduler/        # Cron job management
+│       └── pkg/
+│           └── models/           # Shared data models
+│
+├── packages/
+│   └── shared/                   # Shared types/utils
+│
+├── docker-compose.yml            # Local dev environment
+├── .env.example
+└── README.md
+```
+
+---
+
+## 🗄️ Database Schema
+
+### Tables principales
+
+```sql
+-- Brands table
+CREATE TABLE brands (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE NOT NULL,
+    description TEXT,
+    logo_url VARCHAR(500),
+    website_url VARCHAR(500) NOT NULL,
+    shopify_domain VARCHAR(255) UNIQUE NOT NULL,
+    country VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_synced_at TIMESTAMP WITH TIME ZONE,
+    is_active BOOLEAN DEFAULT true
+);
+
+-- Categories table
+CREATE TABLE categories (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE NOT NULL,
+    parent_id UUID REFERENCES categories(id),
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Products table
+CREATE TABLE products (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    brand_id UUID NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+    shopify_id BIGINT NOT NULL,
+    title VARCHAR(500) NOT NULL,
+    slug VARCHAR(500) NOT NULL,
+    description TEXT,
+    product_type VARCHAR(255),
+    vendor VARCHAR(255),
+    tags TEXT[],
+    
+    -- Pricing (from first variant or min/max)
+    price_min DECIMAL(10,2),
+    price_max DECIMAL(10,2),
+    currency VARCHAR(3) DEFAULT 'EUR',
+    compare_at_price DECIMAL(10,2),
+    
+    -- Metadata
+    metadata JSONB DEFAULT '{}',
+    
+    -- Status
+    is_available BOOLEAN DEFAULT true,
+    published_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    -- Constraints
+    UNIQUE(brand_id, shopify_id)
+);
+
+-- Product variants
+CREATE TABLE product_variants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    shopify_id BIGINT NOT NULL,
+    title VARCHAR(255),
+    sku VARCHAR(255),
+    price DECIMAL(10,2) NOT NULL,
+    compare_at_price DECIMAL(10,2),
+    inventory_quantity INTEGER,
+    option1 VARCHAR(255),
+    option2 VARCHAR(255),
+    option3 VARCHAR(255),
+    is_available BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    UNIQUE(product_id, shopify_id)
+);
+
+-- Product images
+CREATE TABLE product_images (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    shopify_id BIGINT,
+    src VARCHAR(1000) NOT NULL,
+    alt_text VARCHAR(500),
+    width INTEGER,
+    height INTEGER,
+    position INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Product categories (many-to-many)
+CREATE TABLE product_categories (
+    product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+    category_id UUID REFERENCES categories(id) ON DELETE CASCADE,
+    PRIMARY KEY (product_id, category_id)
+);
+
+-- Sync logs for tracking scraping runs
+CREATE TABLE sync_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    brand_id UUID REFERENCES brands(id),
+    status VARCHAR(50) NOT NULL, -- 'pending', 'running', 'completed', 'failed'
+    products_found INTEGER DEFAULT 0,
+    products_created INTEGER DEFAULT 0,
+    products_updated INTEGER DEFAULT 0,
+    error_message TEXT,
+    started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    completed_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Indexes for performance
+CREATE INDEX idx_products_brand_id ON products(brand_id);
+CREATE INDEX idx_products_product_type ON products(product_type);
+CREATE INDEX idx_products_price ON products(price_min, price_max);
+CREATE INDEX idx_products_tags ON products USING GIN(tags);
+CREATE INDEX idx_products_metadata ON products USING GIN(metadata);
+CREATE INDEX idx_products_search ON products USING GIN(to_tsvector('french', title || ' ' || COALESCE(description, '')));
+CREATE INDEX idx_product_variants_product_id ON product_variants(product_id);
+CREATE INDEX idx_product_images_product_id ON product_images(product_id);
+```
+
+---
+
+## 🔄 Shopify Scraping Strategy
+
+### Méthode 1 : Storefront API (Recommandé si disponible)
+Certaines boutiques exposent leur API publique :
+```
+GET https://{shop}.myshopify.com/products.json
+GET https://{shop}.myshopify.com/products.json?page=2
+GET https://{shop}.myshopify.com/collections/{collection}/products.json
+```
+
+### Méthode 2 : Scraping HTML (Fallback)
+Pour les boutiques qui bloquent l'API JSON :
+- Parser les pages collection
+- Extraire les données structurées (JSON-LD)
+- Respecter le `robots.txt` et rate limiting
+
+### Go Scraper Logic
+
+```go
+// internal/shopify/client.go
+package shopify
+
+type Product struct {
+    ID          int64     `json:"id"`
+    Title       string    `json:"title"`
+    Handle      string    `json:"handle"`
+    Description string    `json:"body_html"`
+    Vendor      string    `json:"vendor"`
+    ProductType string    `json:"product_type"`
+    Tags        []string  `json:"tags"`
+    Variants    []Variant `json:"variants"`
+    Images      []Image   `json:"images"`
+    PublishedAt time.Time `json:"published_at"`
+}
+
+type ScraperConfig struct {
+    MaxConcurrency  int           // Goroutines parallèles
+    RequestDelay    time.Duration // Délai entre requêtes (politeness)
+    RetryAttempts   int
+    UserAgent       string
+}
+
+// Scraping flow:
+// 1. Fetch /products.json?limit=250
+// 2. Paginate until no more products
+// 3. Normalize data to our schema
+// 4. Upsert to PostgreSQL
+// 5. Log sync results
+```
+
+### Rate Limiting & Politeness
+- **Délai minimum** : 1 seconde entre requêtes vers le même domaine
+- **Concurrence** : Max 3 shops en parallèle
+- **User-Agent** : Identifier clairement le bot
+- **Respect robots.txt** : Vérifier avant de scraper
+- **Retry logic** : Exponential backoff sur erreurs 429/5xx
+
+---
+
+## 🎨 Design System & Frontend Guidelines
+
+### Vision Design
+
+**Aesthetic** : Minimal, épuré, premium — inspiré des boutiques de luxe (SSENSE, Mr Porter, END.)
+**Palette** : Noir & blanc strict avec accents subtils
+**Typographie** : Sans-serif moderne, hiérarchie claire
+**Principe** : "Less is more" — laisser les produits parler
+
+### Palette de couleurs
+
+```css
+/* globals.css - Thème customisé shadcn */
+@layer base {
+  :root {
+    /* Backgrounds */
+    --background: 0 0% 100%;           /* Pure white */
+    --foreground: 0 0% 0%;             /* Pure black */
+    
+    /* Cards & elevated surfaces */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    
+    /* Popover & dropdowns */
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+    
+    /* Primary actions */
+    --primary: 0 0% 0%;                /* Black buttons */
+    --primary-foreground: 0 0% 100%;   /* White text on black */
+    
+    /* Secondary actions */
+    --secondary: 0 0% 96%;             /* Light gray bg */
+    --secondary-foreground: 0 0% 0%;
+    
+    /* Muted elements */
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;      /* Gray text */
+    
+    /* Accents (hover states) */
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 0%;
+    
+    /* Destructive */
+    --destructive: 0 0% 0%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Borders & inputs */
+    --border: 0 0% 90%;                /* Subtle borders */
+    --input: 0 0% 90%;
+    --ring: 0 0% 0%;                   /* Focus rings */
+    
+    /* Border radius - sharp for premium feel */
+    --radius: 0px;                     /* No rounded corners = sharp & premium */
+  }
+
+  .dark {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 100%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 0 0% 100%;
+  }
+}
+```
+
+### Typographie
+
+```css
+/* globals.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@400;500;600&display=swap');
+
+@layer base {
+  body {
+    @apply font-sans antialiased;
+  }
+  
+  h1, h2, h3 {
+    @apply font-serif tracking-tight;
+  }
+}
+
+/* tailwind.config.ts */
+fontFamily: {
+  sans: ['Inter', 'system-ui', 'sans-serif'],
+  serif: ['Playfair Display', 'Georgia', 'serif'],
+  mono: ['JetBrains Mono', 'monospace'],
+}
+
+fontSize: {
+  'display': ['4rem', { lineHeight: '1', letterSpacing: '-0.02em' }],
+  'headline': ['2.5rem', { lineHeight: '1.1', letterSpacing: '-0.02em' }],
+  'title': ['1.5rem', { lineHeight: '1.2', letterSpacing: '-0.01em' }],
+  'body': ['1rem', { lineHeight: '1.6' }],
+  'caption': ['0.875rem', { lineHeight: '1.5' }],
+  'overline': ['0.75rem', { lineHeight: '1', letterSpacing: '0.1em', textTransform: 'uppercase' }],
+}
+```
+
+### Composants shadcn customisés
+
+#### Installation initiale
+```bash
+npx shadcn-ui@latest init
+# Style: Default
+# Base color: Neutral
+# CSS variables: Yes
+```
+
+#### Composants à installer
+```bash
+npx shadcn-ui@latest add button card badge input select checkbox slider sheet dialog separator skeleton aspect-ratio
+```
+
+#### Button — Customisation premium
+
+```tsx
+// components/ui/button.tsx
+const buttonVariants = cva(
+  "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 uppercase tracking-widest",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+        // Premium specific
+        premium: "bg-black text-white border border-black hover:bg-white hover:text-black transition-colors duration-300",
+        "premium-outline": "bg-transparent text-black border border-black hover:bg-black hover:text-white transition-colors duration-300",
+      },
+      size: {
+        default: "h-12 px-8 py-3",
+        sm: "h-9 px-4 text-xs",
+        lg: "h-14 px-12 text-base",
+        icon: "h-10 w-10",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+```
+
+#### ProductCard — Composant custom
+
+```tsx
+// components/products/ProductCard.tsx
+import { AspectRatio } from "@/components/ui/aspect-ratio"
+import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
+import Image from "next/image"
+
+interface ProductCardProps {
+  product: {
+    id: string
+    title: string
+    slug: string
+    brand: { name: string; slug: string }
+    priceMin: number
+    priceMax: number
+    compareAtPrice?: number
+    currency: string
+    images: { src: string; alt: string }[]
+    isAvailable: boolean
+    isNew?: boolean
+  }
+}
+
+export function ProductCard({ product }: ProductCardProps) {
+  const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.priceMin
+  const discountPercent = hasDiscount 
+    ? Math.round((1 - product.priceMin / product.compareAtPrice!) * 100)
+    : 0
+
+  return (
+    <Link href={`/products/${product.slug}`} className="group block">
+      {/* Image container */}
+      <div className="relative overflow-hidden bg-neutral-100">
+        <AspectRatio ratio={3 / 4}>
+          <Image
+            src={product.images[0]?.src || "/placeholder.jpg"}
+            alt={product.images[0]?.alt || product.title}
+            fill
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          />
+        </AspectRatio>
+        
+        {/* Badges overlay */}
+        <div className="absolute top-3 left-3 flex flex-col gap-2">
+          {product.isNew && (
+            <Badge variant="default" className="bg-black text-white text-[10px] tracking-widest">
+              NEW
+            </Badge>
+          )}
+          {hasDiscount && (
+            <Badge variant="outline" className="bg-white text-black text-[10px] tracking-widest">
+              -{discountPercent}%
+            </Badge>
+          )}
+        </div>
+
+        {/* Quick add - appears on hover */}
+        <div className="absolute inset-x-0 bottom-0 translate-y-full transition-transform duration-300 group-hover:translate-y-0">
+          <button className="w-full bg-black text-white py-3 text-xs uppercase tracking-widest hover:bg-neutral-800 transition-colors">
+            Quick View
+          </button>
+        </div>
+
+        {/* Out of stock overlay */}
+        {!product.isAvailable && (
+          <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+            <span className="text-xs uppercase tracking-widest text-neutral-500">
+              Sold Out
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Product info */}
+      <div className="mt-4 space-y-1">
+        <p className="text-[11px] uppercase tracking-widest text-neutral-500">
+          {product.brand.name}
+        </p>
+        <h3 className="text-sm font-medium truncate group-hover:underline underline-offset-4">
+          {product.title}
+        </h3>
+        <div className="flex items-center gap-2">
+          <span className="text-sm">
+            {product.priceMin === product.priceMax 
+              ? `${product.priceMin} ${product.currency}`
+              : `${product.priceMin} - ${product.priceMax} ${product.currency}`
+            }
+          </span>
+          {hasDiscount && (
+            <span className="text-sm text-neutral-400 line-through">
+              {product.compareAtPrice} {product.currency}
+            </span>
+          )}
+        </div>
+      </div>
+    </Link>
+  )
+}
+```
+
+#### FilterSidebar — Filtres premium
+
+```tsx
+// components/filters/FilterSidebar.tsx
+"use client"
+
+import { Checkbox } from "@/components/ui/checkbox"
+import { Slider } from "@/components/ui/slider"
+import { Separator } from "@/components/ui/separator"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Button } from "@/components/ui/button"
+import { SlidersHorizontal, X } from "lucide-react"
+import { useState } from "react"
+
+interface FilterSidebarProps {
+  categories: { slug: string; name: string; count: number }[]
+  brands: { slug: string; name: string; count: number }[]
+  priceRange: { min: number; max: number }
+  activeFilters: FilterState
+  onFilterChange: (filters: FilterState) => void
+}
+
+export function FilterSidebar({ categories, brands, priceRange, activeFilters, onFilterChange }: FilterSidebarProps) {
+  const FilterContent = () => (
+    <div className="space-y-8">
+      {/* Categories */}
+      <FilterSection title="Category">
+        <div className="space-y-3">
+          {categories.map((cat) => (
+            <label key={cat.slug} className="flex items-center justify-between cursor-pointer group">
+              <div className="flex items-center gap-3">
+                <Checkbox 
+                  checked={activeFilters.categories.includes(cat.slug)}
+                  onCheckedChange={(checked) => {
+                    const newCategories = checked
+                      ? [...activeFilters.categories, cat.slug]
+                      : activeFilters.categories.filter(c => c !== cat.slug)
+                    onFilterChange({ ...activeFilters, categories: newCategories })
+                  }}
+                  className="rounded-none border-neutral-300 data-[state=checked]:bg-black data-[state=checked]:border-black"
+                />
+                <span className="text-sm group-hover:underline underline-offset-4">{cat.name}</span>
+              </div>
+              <span className="text-xs text-neutral-400">{cat.count}</span>
+            </label>
+          ))}
+        </div>
+      </FilterSection>
+
+      <Separator className="bg-neutral-200" />
+
+      {/* Brands */}
+      <FilterSection title="Brand">
+        <div className="space-y-3 max-h-64 overflow-y-auto">
+          {brands.map((brand) => (
+            <label key={brand.slug} className="flex items-center justify-between cursor-pointer group">
+              <div className="flex items-center gap-3">
+                <Checkbox 
+                  checked={activeFilters.brands.includes(brand.slug)}
+                  onCheckedChange={(checked) => {
+                    const newBrands = checked
+                      ? [...activeFilters.brands, brand.slug]
+                      : activeFilters.brands.filter(b => b !== brand.slug)
+                    onFilterChange({ ...activeFilters, brands: newBrands })
+                  }}
+                  className="rounded-none border-neutral-300 data-[state=checked]:bg-black data-[state=checked]:border-black"
+                />
+                <span className="text-sm group-hover:underline underline-offset-4">{brand.name}</span>
+              </div>
+              <span className="text-xs text-neutral-400">{brand.count}</span>
+            </label>
+          ))}
+        </div>
+      </FilterSection>
+
+      <Separator className="bg-neutral-200" />
+
+      {/* Price Range */}
+      <FilterSection title="Price">
+        <div className="space-y-4">
+          <Slider
+            min={priceRange.min}
+            max={priceRange.max}
+            step={10}
+            value={activeFilters.priceRange}
+            onValueChange={(value) => onFilterChange({ ...activeFilters, priceRange: value as [number, number] })}
+            className="[&_[role=slider]]:bg-black [&_[role=slider]]:border-black [&_.range]:bg-black"
+          />
+          <div className="flex items-center justify-between text-sm">
+            <span>{activeFilters.priceRange[0]}€</span>
+            <span>{activeFilters.priceRange[1]}€</span>
+          </div>
+        </div>
+      </FilterSection>
+
+      <Separator className="bg-neutral-200" />
+
+      {/* Availability */}
+      <FilterSection title="Availability">
+        <label className="flex items-center gap-3 cursor-pointer group">
+          <Checkbox 
+            checked={activeFilters.inStock}
+            onCheckedChange={(checked) => onFilterChange({ ...activeFilters, inStock: !!checked })}
+            className="rounded-none border-neutral-300 data-[state=checked]:bg-black data-[state=checked]:border-black"
+          />
+          <span className="text-sm group-hover:underline underline-offset-4">In Stock Only</span>
+        </label>
+      </FilterSection>
+    </div>
+  )
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:block w-64 flex-shrink-0">
+        <div className="sticky top-24">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-xs uppercase tracking-widest">Filters</h2>
+            {hasActiveFilters(activeFilters) && (
+              <button 
+                onClick={() => onFilterChange(defaultFilters)}
+                className="text-xs underline underline-offset-4 hover:no-underline"
+              >
+                Clear All
+              </button>
+            )}
+          </div>
+          <FilterContent />
+        </div>
+      </aside>
+
+      {/* Mobile filter sheet */}
+      <div className="lg:hidden">
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <SlidersHorizontal className="h-4 w-4" />
+              Filters
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-full sm:w-96 overflow-y-auto">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-xs uppercase tracking-widest">Filters</h2>
+            </div>
+            <FilterContent />
+          </SheetContent>
+        </Sheet>
+      </div>
+    </>
+  )
+}
+
+function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-4">
+      <h3 className="text-xs uppercase tracking-widest font-medium">{title}</h3>
+      {children}
+    </div>
+  )
+}
+```
+
+#### Header — Navigation premium
+
+```tsx
+// components/layout/Header.tsx
+"use client"
+
+import Link from "next/link"
+import { Search, Menu, X } from "lucide-react"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { useState } from "react"
+
+const navigation = [
+  { name: "New Arrivals", href: "/products?sort=newest" },
+  { name: "Brands", href: "/brands" },
+  { name: "Clothing", href: "/products?category=clothing" },
+  { name: "Accessories", href: "/products?category=accessories" },
+  { name: "Footwear", href: "/products?category=footwear" },
+]
+
+export function Header() {
+  const [searchOpen, setSearchOpen] = useState(false)
+
+  return (
+    <header className="sticky top-0 z-50 bg-white border-b border-neutral-200">
+      {/* Announcement bar */}
+      <div className="bg-black text-white py-2 text-center">
+        <p className="text-[11px] uppercase tracking-widest">
+          Free shipping on orders over 150€
+        </p>
+      </div>
+
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          {/* Mobile menu */}
+          <Sheet>
+            <SheetTrigger asChild className="lg:hidden">
+              <button className="p-2 -ml-2">
+                <Menu className="h-5 w-5" />
+              </button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-full sm:w-96">
+              <nav className="flex flex-col space-y-6 mt-8">
+                {navigation.map((item) => (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className="text-lg font-medium hover:underline underline-offset-4"
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+              </nav>
+            </SheetContent>
+          </Sheet>
+
+          {/* Desktop nav */}
+          <nav className="hidden lg:flex items-center space-x-8">
+            {navigation.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className="text-xs uppercase tracking-widest hover:underline underline-offset-4 transition-all"
+              >
+                {item.name}
+              </Link>
+            ))}
+          </nav>
+
+          {/* Logo */}
+          <Link href="/" className="absolute left-1/2 -translate-x-1/2">
+            <span className="font-serif text-xl tracking-tight">INDIEMARKET</span>
+          </Link>
+
+          {/* Search */}
+          <button 
+            onClick={() => setSearchOpen(true)}
+            className="p-2 -mr-2 lg:mr-0"
+          >
+            <Search className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Search overlay */}
+      {searchOpen && (
+        <div className="fixed inset-0 bg-white z-50 flex flex-col">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+            <span className="font-serif text-xl tracking-tight">INDIEMARKET</span>
+            <button onClick={() => setSearchOpen(false)}>
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="flex-1 flex items-center justify-center">
+            <div className="w-full max-w-2xl px-4">
+              <input
+                type="search"
+                placeholder="Search products..."
+                autoFocus
+                className="w-full text-2xl md:text-4xl font-serif border-b border-black pb-4 bg-transparent focus:outline-none placeholder:text-neutral-300"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </header>
+  )
+}
+```
+
+### Guidelines UI/UX
+
+#### Spacing & Layout
+```
+- Container max-width: 1440px
+- Grid: 4 colonnes mobile, 3 tablette, 4 desktop
+- Gutter: 16px mobile, 24px desktop
+- Section padding: 64px vertical minimum
+- Utiliser beaucoup d'espace blanc (breathing room)
+```
+
+#### Animations & Transitions
+```css
+/* Transitions subtiles et premium */
+.transition-premium {
+  @apply transition-all duration-300 ease-out;
+}
+
+/* Hover states */
+- Images: scale 1.05 sur hover (500ms)
+- Links: underline apparaît
+- Buttons: inversion couleurs (300ms)
+- Cards: légère élévation shadow
+
+/* No bouncy/playful animations - keep it elegant */
+```
+
+#### Images
+```
+- Ratio 3:4 pour product cards (portrait)
+- Ratio 16:9 pour hero/banners
+- Fond neutre clair (neutral-100) pour images produits
+- Lazy loading avec skeleton pulse
+- Hover zoom subtil (scale 1.05)
+```
+
+#### Iconographie
+```
+- Utiliser Lucide React exclusivement
+- Stroke width: 1.5 (thin, elegant)
+- Taille: 16-20px pour UI, 24px pour actions principales
+- Couleur: currentColor (hérite du texte)
+```
+
+#### Micro-interactions
+```
+- Checkbox: animation tick rapide
+- Buttons: feedback immédiat (pas de delay)
+- Filters: mise à jour instantanée
+- Loading: skeleton animations subtiles, pas de spinners
+```
+
+### Do's & Don'ts
+
+#### ✅ Do
+- Laisser respirer les éléments (whitespace généreux)
+- Utiliser des bordures fines (1px) et subtiles
+- Typographie lisible, hiérarchie claire
+- Hover states élégants (underline, inversion)
+- Images de qualité, pas de placeholder cheap
+- Uppercase + letter-spacing pour labels/overlines
+- Transitions fluides (300-500ms)
+
+#### ❌ Don't
+- Rounded corners (garder sharp/rectangulaire)
+- Couleurs vives ou gradients
+- Shadows lourdes (si shadow, très subtile)
+- Animations bouncy ou playful
+- Emojis dans l'UI
+- Trop de badges/tags sur les produits
+- Loader spinners (utiliser skeletons)
+- Borders épaisses
+
+---
+
+## 🎨 Frontend Features
+
+### Pages principales
+
+1. **Homepage** (`/`)
+   - Hero section avec marques featured
+   - Produits tendance
+   - Catégories populaires
+
+2. **Catalogue** (`/products`)
+   - Grid de produits avec lazy loading
+   - Filtres sidebar (mobile: drawer)
+     - Catégorie
+     - Marque
+     - Prix (range slider)
+     - Tags/Genre
+     - Disponibilité
+   - Tri (prix, date, popularité)
+   - Pagination ou infinite scroll
+
+3. **Page produit** (`/products/[slug]`)
+   - Galerie images
+   - Sélecteur variants
+   - Description
+   - Lien vers boutique originale
+   - Produits similaires
+
+4. **Page marque** (`/brands/[slug]`)
+   - Info marque
+   - Tous les produits de la marque
+   - Filtres contextuels
+
+### Composants clés
+
+```typescript
+// components/products/ProductCard.tsx
+interface ProductCardProps {
+  product: {
+    id: string;
+    title: string;
+    slug: string;
+    brand: { name: string; slug: string };
+    priceMin: number;
+    priceMax: number;
+    currency: string;
+    images: { src: string; alt: string }[];
+    isAvailable: boolean;
+  };
+}
+
+// components/filters/FilterSidebar.tsx
+interface FilterState {
+  categories: string[];
+  brands: string[];
+  priceRange: [number, number];
+  tags: string[];
+  inStock: boolean;
+}
+
+// components/ui/ -> Utiliser shadcn/ui
+// - Button, Card, Badge, Slider, Checkbox
+// - Sheet (mobile filters)
+// - Select, Command (search)
+```
+
+---
+
+## 🛠️ API Endpoints
+
+### Next.js API Routes
+
+```typescript
+// GET /api/products
+// Query params: category, brand, minPrice, maxPrice, tags, page, limit, sort
+interface ProductsResponse {
+  products: Product[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  filters: {
+    categories: { slug: string; name: string; count: number }[];
+    brands: { slug: string; name: string; count: number }[];
+    priceRange: { min: number; max: number };
+  };
+}
+
+// GET /api/products/[slug]
+// Returns single product with full details
+
+// GET /api/brands
+// List all active brands
+
+// GET /api/brands/[slug]
+// Brand details + product count
+
+// GET /api/categories
+// Category tree
+
+// POST /api/admin/sync (protected)
+// Trigger manual sync for a brand
+```
+
+---
+
+## 📦 Dependencies
+
+### Frontend (Next.js)
+
+```json
+{
+  "dependencies": {
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "@tanstack/react-query": "^5.0.0",
+    "drizzle-orm": "^0.30.0",
+    "zod": "^3.23.0",
+    "tailwindcss": "^3.4.0",
+    "@radix-ui/react-*": "latest",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.0",
+    "tailwind-merge": "^2.3.0",
+    "lucide-react": "^0.378.0",
+    "nuqs": "^1.17.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "drizzle-kit": "^0.21.0",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.3.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.0"
+  }
+}
+```
+
+### Backend (Go Scraper)
+
+```go
+// go.mod
+module indie-marketplace/scraper
+
+go 1.22
+
+require (
+    github.com/gofiber/fiber/v2 v2.52.0  // HTTP server (optionnel)
+    github.com/jackc/pgx/v5 v5.5.5       // PostgreSQL driver
+    github.com/PuerkitoBio/goquery v1.9.1 // HTML parsing
+    github.com/robfig/cron/v3 v3.0.1     // Cron scheduling
+    go.uber.org/zap v1.27.0              // Logging
+    golang.org/x/time v0.5.0             // Rate limiting
+)
+```
+
+---
+
+## 🚀 Development Phases
+
+### Phase 1 — MVP Core (2-3 semaines)
+- [ ] Setup monorepo structure
+- [ ] Database schema + migrations (Drizzle)
+- [ ] Go scraper basique (products.json)
+- [ ] Next.js pages (catalogue, produit)
+- [ ] Filtres basiques (catégorie, marque, prix)
+- [ ] Déploiement initial
+
+### Phase 2 — Polish (1-2 semaines)
+- [ ] UI/UX improvements
+- [ ] Meilisearch integration
+- [ ] Advanced filters (tags, availability)
+- [ ] Brand pages
+- [ ] SEO optimization (sitemap, meta tags)
+
+### Phase 3 — Scale (ongoing)
+- [ ] Admin dashboard (ajouter marques)
+- [ ] Monitoring & alerting
+- [ ] Analytics (quels produits marchent)
+- [ ] User accounts (favoris, alerts)
+- [ ] Affiliate links integration
+
+---
+
+## 🔧 Environment Variables
+
+```env
+# Database
+DATABASE_URL=postgresql://user:pass@host:5432/indie_marketplace
+DIRECT_URL=postgresql://user:pass@host:5432/indie_marketplace
+
+# Supabase (if used)
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=xxx
+SUPABASE_SERVICE_ROLE_KEY=xxx
+
+# Meilisearch (Phase 2)
+MEILISEARCH_HOST=http://localhost:7700
+MEILISEARCH_API_KEY=xxx
+
+# Scraper
+SCRAPER_USER_AGENT="IndieMarketBot/1.0 (+https://indiemarket.com/bot)"
+SCRAPER_REQUEST_DELAY_MS=1000
+SCRAPER_MAX_CONCURRENCY=3
+
+# App
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+---
+
+## 📝 Notes & Considerations
+
+### Legal
+- Vérifier les CGU de chaque boutique avant scraping
+- Afficher clairement que les produits proviennent des marques originales
+- Inclure liens "Acheter" vers la boutique source
+- Pas de stockage d'images localement (hotlink ou CDN proxy)
+
+### Performance
+- ISR (Incremental Static Regeneration) pour pages produits
+- Image optimization via next/image avec loader externe
+- Pagination côté serveur (pas de chargement de 10k produits)
+- Index PostgreSQL bien configurés
+
+### Scalabilité
+- Scraper en microservice séparé = scale indépendamment
+- Meilisearch pour search quand >10k produits
+- CDN pour assets statiques
+- Connection pooling PostgreSQL (PgBouncer)
+
+---
+
+## 🎯 Success Metrics
+
+- **Technique** : Temps de réponse API < 200ms, scraping fiable > 95%
+- **Produit** : 10+ marques indexées, 1000+ produits
+- **UX** : Lighthouse score > 90, filters responsive < 100ms
+
+---
+
+## 📚 Resources
+
+- [Shopify Storefront API](https://shopify.dev/docs/api/storefront)
+- [Drizzle ORM Docs](https://orm.drizzle.team/)
+- [Next.js App Router](https://nextjs.org/docs/app)
+- [Meilisearch Docs](https://docs.meilisearch.com/)
+- [Colly (Go scraping framework)](http://go-colly.org/) — alternative à goquery

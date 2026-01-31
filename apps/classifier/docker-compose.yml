@@ -1,0 +1,78 @@
+services:
+  # Go Classification API
+  classifier:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_PORT=8080
+      # Connect to host PostgreSQL (local database)
+      - DATABASE_URL=postgres://indie:indiepass@host.docker.internal:5432/indie_marketplace?sslmode=disable
+      - REDIS_URL=redis:6379
+      - REDIS_PASSWORD=
+      - MODEL_SERVICE_URL=http://model-service:8000
+      - WORKER_COUNT=8
+      - BATCH_SIZE=10
+      - CONFIDENCE_THRESHOLD=0.80
+      - GIN_MODE=release
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+      model-service:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - classifier-network
+
+  # Python Fashion-CLIP Model Service
+  model-service:
+    build:
+      context: ./model-service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    restart: unless-stopped
+    networks:
+      - classifier-network
+
+  # Redis Queue
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - classifier-network
+
+volumes:
+  redis-data:
+
+networks:
+  classifier-network:
+    driver: bridge

@@ -1,0 +1,19 @@
+{
+  "name": "indie-marketplace",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspace=apps/web",
+    "lint": "npm run lint --workspace=apps/web",
+    "db:generate": "npm run db:generate --workspace=apps/web",
+    "db:migrate": "npm run db:migrate --workspace=apps/web",
+    "db:push": "npm run db:push --workspace=apps/web"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0"
+  }
+}
