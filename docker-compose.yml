@@ -42,23 +42,6 @@ services:
     networks:
       - indie-network
 
-  # Meilisearch (optional - for full-text search)
-  meilisearch:
-    image: getmeili/meilisearch:v1.6
-    container_name: indie-meilisearch
-    restart: unless-stopped
-    environment:
-      MEILI_ENV: ${MEILI_ENV:-development}
-      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?Set MEILI_MASTER_KEY in .env}
-    ports:
-      - "7700:7700"
-    volumes:
-      - meilisearch_data:/meili_data
-    profiles:
-      - search
-    networks:
-      - indie-network
-
   # ===========================================
   # AI/ML SERVICES
   # ===========================================
@@ -149,8 +132,6 @@ services:
       - "3000:3000"
     environment:
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
-      - MEILISEARCH_HOST=http://meilisearch:7700
-      - MEILISEARCH_API_KEY=${MEILI_MASTER_KEY}
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       - CRON_SECRET=${CRON_SECRET:?Set CRON_SECRET in .env}
     depends_on:
@@ -191,7 +172,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  meilisearch_data:
 
 networks:
   indie-network:

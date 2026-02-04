@@ -41,7 +41,6 @@ Ce guide explique comment lancer l'ensemble du projet avec Docker Compose.
 | `scraper` | - | Daemon Go qui scrape les produits (toutes les 6h) |
 | `web` | 3000 | Application Next.js |
 | `cron` | - | Cron job quotidien (scraping + classification) |
-| `meilisearch` | 7700 | Recherche full-text (optionnel) |
 
 ## Démarrage rapide
 
@@ -68,13 +67,6 @@ docker compose logs -f
 # Voir les logs d'un service spécifique
 docker compose logs -f web
 docker compose logs -f cron
-```
-
-### 3. Avec Meilisearch (optionnel)
-
-```bash
-# Démarrer avec le profil search
-docker compose --profile search up -d
 ```
 
 ## Cron Job Quotidien
