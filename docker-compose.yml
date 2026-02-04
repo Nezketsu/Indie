@@ -129,6 +129,7 @@ services:
         condition: service_healthy
     networks:
       - indie-network
+      - dokploy-network
 
   # ===========================================
   # CRON JOB SERVICE
@@ -166,3 +167,5 @@ volumes:
 networks:
   indie-network:
     driver: bridge
+  dokploy-network:
+    external: true
