@@ -70,7 +70,9 @@ export default async function BrandPage({ params, searchParams }: PageProps) {
           {brand.country && (
             <span className="uppercase tracking-widest">{brand.country}</span>
           )}
-          <span>{t('productsCount', { count: brand.productCount })}</span>
+          {brand.productCount > 0 && (
+            <span>{t('productsCount', { count: brand.productCount })}</span>
+          )}
           {brand.websiteUrl && (
             <a
               href={brand.websiteUrl}

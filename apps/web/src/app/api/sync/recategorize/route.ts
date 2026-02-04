@@ -1,20 +1,33 @@
-import { NextResponse } from "next/server";
-import { recategorizeAllProducts } from "@/lib/sync";
+import { NextRequest, NextResponse } from "next/server";
+import { recategorizeAllProducts, recategorizeBrandProducts } from "@/lib/sync";
 
-// POST /api/sync/recategorize - Re-categorize all existing products
-export async function POST() {
+// POST /api/sync/recategorize - Re-categorize products
+// Pass { brandId: "..." } in body to recategorize only that brand
+export async function POST(request: NextRequest) {
     try {
+        const body = await request.json().catch(() => ({}));
+        const { brandId } = body;
+
         const logs: string[] = [];
         const onProgress = (message: string) => {
             console.log(`[Recategorize] ${message}`);
             logs.push(message);
         };
 
-        const result = await recategorizeAllProducts(onProgress);
+        let result;
+
+        if (brandId) {
+            // Recategorize specific brand
+            result = await recategorizeBrandProducts(brandId, onProgress);
+        } else {
+            // Recategorize all products
+            result = await recategorizeAllProducts(onProgress);
+        }
 
         return NextResponse.json({
             success: true,
             updated: result.updated,
+            skipped: result.skipped,
             errors: result.errors,
             logs,
         });

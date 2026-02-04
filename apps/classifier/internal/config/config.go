@@ -34,7 +34,7 @@ type Config struct {
 func Load() *Config {
 	return &Config{
 		ServerPort:          getEnv("SERVER_PORT", "8080"),
-		DatabaseURL:         getEnv("DATABASE_URL", "postgres://indie:indiepass@localhost:5432/indie_marketplace"),
+		DatabaseURL:         getEnv("DATABASE_URL", ""),
 		RedisURL:            getEnv("REDIS_URL", "localhost:6379"),
 		RedisPassword:       getEnv("REDIS_PASSWORD", ""),
 		WorkerCount:         getEnvInt("WORKER_COUNT", 4),

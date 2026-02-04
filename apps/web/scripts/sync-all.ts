@@ -89,7 +89,7 @@ async function syncAll() {
                             const needsCategorization = !existingProduct.productType || existingProduct.productType === "Other";
                             productType = needsCategorization
                                 ? categorizeProduct(scraped.title, scraped.description).productType
-                                : existingProduct.productType;
+                                : existingProduct.productType ?? categorizeProduct(scraped.title, scraped.description).productType;
 
                             // Update existing product
                             await db

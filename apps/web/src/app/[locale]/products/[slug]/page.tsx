@@ -7,6 +7,7 @@ import { WishlistButton } from "@/components/products/WishlistButton";
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 60;
 
 export async function generateStaticParams() {
@@ -36,7 +37,7 @@ export async function generateMetadata({
 
     return {
         title: `${product.title} | Indie Marketplace`,
-        description: product.description?.slice(0, 160) || `Shop ${product.title} from ${product.brand?.name}`,
+        description: product.description?.slice(0, 160) || `Shop ${product.title} from Indie Marketplace`,
     };
 }
 
@@ -70,10 +71,14 @@ export default async function ProductPage({
         }).format(price);
     };
 
+    const priceMin = parseFloat(product.priceMin || "0");
+    const priceMax = parseFloat(product.priceMax || "0");
+    const compareAtPrice = product.compareAtPrice ? parseFloat(product.compareAtPrice) : null;
+
     const priceDisplay =
-        product.priceMin === product.priceMax
-            ? formatPrice(product.priceMin)
-            : `${formatPrice(product.priceMin)} - ${formatPrice(product.priceMax)}`;
+        priceMin === priceMax
+            ? formatPrice(priceMin)
+            : `${formatPrice(priceMin)} - ${formatPrice(priceMax)}`;
 
     const brandProductUrl = product.brand?.websiteUrl
         ? `${product.brand.websiteUrl}/products/${product.slug}`
@@ -114,11 +119,11 @@ export default async function ProductPage({
 
                         <div className="flex items-baseline gap-4">
                             <span className="text-2xl">{priceDisplay}</span>
-                            {product.compareAtPrice && product.compareAtPrice > product.priceMin && (
+                            {compareAtPrice && compareAtPrice > priceMin ? (
                                 <span className="text-lg text-neutral-400 line-through">
-                                    {formatPrice(product.compareAtPrice)}
+                                    {formatPrice(compareAtPrice)}
                                 </span>
-                            )}
+                            ) : null}
                         </div>
 
                         <div className="flex items-center gap-2">

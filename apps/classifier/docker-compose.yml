@@ -9,7 +9,7 @@ services:
     environment:
       - SERVER_PORT=8080
       # Connect to host PostgreSQL (local database)
-      - DATABASE_URL=postgres://indie:indiepass@host.docker.internal:5432/indie_marketplace?sslmode=disable
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@host.docker.internal:5432/${POSTGRES_DB}?sslmode=disable
       - REDIS_URL=redis:6379
       - REDIS_PASSWORD=
       - MODEL_SERVICE_URL=http://model-service:8000

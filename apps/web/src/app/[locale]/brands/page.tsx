@@ -43,9 +43,11 @@ export default async function BrandsPage({ params }: Props) {
                   {brand.description}
                 </p>
               )}
-              <p className="text-xs text-neutral-400">
-                {t('productsCount', { count: brand.productCount })}
-              </p>
+              {brand.productCount > 0 && (
+                <p className="text-xs text-neutral-400">
+                  {t('productsCount', { count: brand.productCount })}
+                </p>
+              )}
             </Link>
           ))}
         </div>

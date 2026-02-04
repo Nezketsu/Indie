@@ -24,8 +24,9 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, isAdmin = false }: ProductCardProps) {
-  const hasDiscount =
-    product.compareAtPrice && product.compareAtPrice > product.priceMin;
+  const hasDiscount = Boolean(
+    product.compareAtPrice && product.compareAtPrice > product.priceMin
+  );
   const discountPercent = hasDiscount
     ? Math.round((1 - product.priceMin / product.compareAtPrice!) * 100)
     : 0;

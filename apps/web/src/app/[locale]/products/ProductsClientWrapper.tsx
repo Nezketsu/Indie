@@ -69,7 +69,7 @@ export function ProductsClientWrapper({
       filterOptions.priceRange.max,
     ] as [number, number],
     tags: [],
-    inStock: searchParams.get("inStock") === "true",
+    inStock: searchParams.get("inStock") !== "false",
   });
 
   const [sort, setSort] = useState<SortOption>(currentSort);
@@ -101,8 +101,8 @@ export function ProductsClientWrapper({
       params.set("maxPrice", newFilters.priceRange[1].toString());
     }
 
-    if (newFilters.inStock) {
-      params.set("inStock", "true");
+    if (!newFilters.inStock) {
+      params.set("inStock", "false");
     }
 
     const queryString = params.toString();

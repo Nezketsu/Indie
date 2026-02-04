@@ -83,9 +83,11 @@ export default async function HomePage({ params }: Props) {
                   <p className="text-xs uppercase tracking-widest text-neutral-500">
                     {brand.country || "Independent"}
                   </p>
-                  <p className="text-xs text-neutral-400 mt-2">
-                    {t('productsCount', { count: brand.productCount })}
-                  </p>
+                  {brand.productCount > 0 && (
+                    <p className="text-xs text-neutral-400 mt-2">
+                      {t('productsCount', { count: brand.productCount })}
+                    </p>
+                  )}
                 </Link>
               ))}
             </div>
@@ -99,7 +101,7 @@ export default async function HomePage({ params }: Props) {
           <div className="flex items-center justify-between mb-12">
             <h2 className="text-xs uppercase tracking-widest">{t('newArrivals')}</h2>
             <Link
-              href="/products?sort=newest"
+              href="/new-arrivals"
               className="text-xs uppercase tracking-widest hover:underline underline-offset-4"
             >
               {t('viewAll')}
