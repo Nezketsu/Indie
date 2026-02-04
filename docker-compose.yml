@@ -6,7 +6,7 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
-    container_name: indie-postgres
+
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -25,7 +25,7 @@ services:
   # Redis Queue (for classifier)
   redis:
     image: redis:7-alpine
-    container_name: indie-redis
+
     restart: unless-stopped
     volumes:
       - redis_data:/data
@@ -47,7 +47,7 @@ services:
     build:
       context: ./apps/classifier/model-service
       dockerfile: Dockerfile
-    container_name: indie-model-service
+
     restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
@@ -75,7 +75,7 @@ services:
     build:
       context: ./apps/classifier
       dockerfile: Dockerfile
-    container_name: indie-classifier
+
     restart: unless-stopped
     environment:
       - SERVER_PORT=8080
@@ -102,7 +102,7 @@ services:
     build:
       context: ./apps/scraper
       dockerfile: Dockerfile
-    container_name: indie-scraper
+
     restart: unless-stopped
     environment:
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
@@ -118,7 +118,7 @@ services:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
-    container_name: indie-web
+
     restart: unless-stopped
     environment:
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
@@ -139,7 +139,7 @@ services:
     build:
       context: ./docker/cron
       dockerfile: Dockerfile
-    container_name: indie-cron
+
     restart: unless-stopped
     environment:
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
