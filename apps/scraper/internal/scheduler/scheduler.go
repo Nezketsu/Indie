@@ -195,3 +195,8 @@ func (s *Scheduler) SyncBrandNow(ctx context.Context, brandID string) (models.Sy
 
 	return models.SyncResult{}, nil
 }
+
+// RunSyncNow triggers an immediate sync for all brands (used for one-shot mode)
+func (s *Scheduler) RunSyncNow() {
+	s.runSync()
+}

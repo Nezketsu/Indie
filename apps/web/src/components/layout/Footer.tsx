@@ -2,7 +2,7 @@ import Link from "next/link";
 
 const footerLinks = {
   shop: [
-    { name: "New Arrivals", href: "/products?sort=newest" },
+    { name: "New Arrivals", href: "/new-arrivals" },
     { name: "All Products", href: "/products" },
     { name: "Brands", href: "/brands" },
   ],

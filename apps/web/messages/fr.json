@@ -105,7 +105,8 @@
     "price": "Prix",
     "availability": "Disponibilité",
     "inStockOnly": "En stock uniquement",
-    "clearAll": "Tout effacer"
+    "clearAll": "Tout effacer",
+    "apply": "Appliquer"
   },
   "auth": {
     "loginTitle": "Connexion",
@@ -143,6 +144,15 @@
     "signUpWithGoogle": "S'inscrire avec Google"
   },
   "account": {
+    "profile": {
+      "title": "Mon profil",
+      "orders": "Mes commandes",
+      "ordersDesc": "Suivre vos commandes et voir l'historique",
+      "wishlist": "Ma liste d'envies",
+      "wishlistDesc": "Vos produits favoris sauvegardés",
+      "settings": "Paramètres",
+      "settingsDesc": "Gérer votre compte et vos préférences"
+    },
     "settingsTitle": "Paramètres",
     "personalInfo": "Informations personnelles",
     "emailCannotChange": "L'email ne peut pas être modifié",
@@ -172,6 +182,17 @@
     "inWishlist": "Dans ma liste d'envies",
     "addToWishlist": "Ajouter à ma liste d'envies",
     "removeFromWishlist": "Retirer de la liste d'envies"
+  },
+  "newArrivals": {
+    "title": "Nouveautés",
+    "subtitle": "Découvrez nos dernières arrivées et les pièces les plus récentes de nos marques indépendantes.",
+    "count": "{count, plural, =1 {# produit} other {# produits}}",
+    "emptyTitle": "Aucune nouveauté pour le moment",
+    "emptyDescription": "Revenez bientôt pour découvrir nos dernières arrivées.",
+    "browseAll": "Voir tous les produits",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "pageOf": "Page {current} sur {total}"
   },
   "notFound": {
     "title": "Page non trouvée",

@@ -6,6 +6,8 @@ import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { SlidersHorizontal } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import type { FilterState } from "@/types";
 
 interface FilterSidebarProps {
@@ -23,18 +25,8 @@ const defaultFilters: FilterState = {
   sizes: [],
   priceRange: [0, 1000],
   tags: [],
-  inStock: false,
+  inStock: true,
 };
-
-function hasActiveFilters(filters: FilterState): boolean {
-  return (
-    filters.categories.length > 0 ||
-    filters.brands.length > 0 ||
-    (filters.sizes?.length || 0) > 0 ||
-    filters.tags.length > 0 ||
-    filters.inStock
-  );
-}
 
 function FilterSection({
   title,
@@ -59,10 +51,30 @@ export function FilterSidebar({
   activeFilters,
   onFilterChange,
 }: FilterSidebarProps) {
+  const t = useTranslations("filters");
+  const [pendingFilters, setPendingFilters] = useState<FilterState>(activeFilters);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Sync pending filters when active filters change externally
+  useEffect(() => {
+    setPendingFilters(activeFilters);
+  }, [activeFilters]);
+
+  const handleApply = () => {
+    onFilterChange(pendingFilters);
+    setMobileOpen(false);
+  };
+
+  const handleClear = () => {
+    setPendingFilters(defaultFilters);
+  };
+
+  const hasChanges = JSON.stringify(pendingFilters) !== JSON.stringify(activeFilters);
+
   const FilterContent = () => (
     <div className="space-y-8">
       {/* Categories */}
-      <FilterSection title="Category">
+      <FilterSection title={t("category")}>
         <div className="space-y-3">
           {categories.map((cat) => (
             <label
@@ -71,12 +83,12 @@ export function FilterSidebar({
             >
               <div className="flex items-center gap-3">
                 <Checkbox
-                  checked={activeFilters.categories.includes(cat.slug)}
+                  checked={pendingFilters.categories.includes(cat.slug)}
                   onCheckedChange={(checked) => {
                     const newCategories = checked
-                      ? [...activeFilters.categories, cat.slug]
-                      : activeFilters.categories.filter((c) => c !== cat.slug);
-                    onFilterChange({ ...activeFilters, categories: newCategories });
+                      ? [...pendingFilters.categories, cat.slug]
+                      : pendingFilters.categories.filter((c) => c !== cat.slug);
+                    setPendingFilters({ ...pendingFilters, categories: newCategories });
                   }}
                   className="rounded-none border-neutral-300 data-[state=checked]:bg-black data-[state=checked]:border-black"
                 />
@@ -84,7 +96,7 @@ export function FilterSidebar({
                   {cat.name}
                 </span>
               </div>
-              <span className="text-xs text-neutral-400">{cat.count}</span>
+              {cat.count > 0 && <span className="text-xs text-neutral-400">{cat.count}</span>}
             </label>
           ))}
         </div>
@@ -95,19 +107,19 @@ export function FilterSidebar({
       {/* Sizes */}
       {sizes.length > 0 && (
         <>
-          <FilterSection title="Size">
+          <FilterSection title={t("size")}>
             <div className="flex flex-wrap gap-2">
               {sizes.map((size) => {
-                const isSelected = activeFilters.sizes?.includes(size.value) || false;
+                const isSelected = pendingFilters.sizes?.includes(size.value) || false;
                 return (
                   <button
                     key={size.value}
                     onClick={() => {
-                      const currentSizes = activeFilters.sizes || [];
+                      const currentSizes = pendingFilters.sizes || [];
                       const newSizes = isSelected
                         ? currentSizes.filter((s) => s !== size.value)
                         : [...currentSizes, size.value];
-                      onFilterChange({ ...activeFilters, sizes: newSizes });
+                      setPendingFilters({ ...pendingFilters, sizes: newSizes });
                     }}
                     className={`px-3 py-1.5 text-sm border transition-colors ${isSelected
                         ? "bg-black text-white border-black"
@@ -126,7 +138,7 @@ export function FilterSidebar({
       )}
 
       {/* Brands */}
-      <FilterSection title="Brand">
+      <FilterSection title={t("brand")}>
         <div className="space-y-3 max-h-64 overflow-y-auto">
           {brands.map((brand) => (
             <label
@@ -135,12 +147,12 @@ export function FilterSidebar({
             >
               <div className="flex items-center gap-3">
                 <Checkbox
-                  checked={activeFilters.brands.includes(brand.slug)}
+                  checked={pendingFilters.brands.includes(brand.slug)}
                   onCheckedChange={(checked) => {
                     const newBrands = checked
-                      ? [...activeFilters.brands, brand.slug]
-                      : activeFilters.brands.filter((b) => b !== brand.slug);
-                    onFilterChange({ ...activeFilters, brands: newBrands });
+                      ? [...pendingFilters.brands, brand.slug]
+                      : pendingFilters.brands.filter((b) => b !== brand.slug);
+                    setPendingFilters({ ...pendingFilters, brands: newBrands });
                   }}
                   className="rounded-none border-neutral-300 data-[state=checked]:bg-black data-[state=checked]:border-black"
                 />
@@ -148,7 +160,7 @@ export function FilterSidebar({
                   {brand.name}
                 </span>
               </div>
-              <span className="text-xs text-neutral-400">{brand.count}</span>
+              {brand.count > 0 && <span className="text-xs text-neutral-400">{brand.count}</span>}
             </label>
           ))}
         </div>
@@ -157,24 +169,24 @@ export function FilterSidebar({
       <Separator className="bg-neutral-200" />
 
       {/* Price Range */}
-      <FilterSection title="Price">
-        <div className="space-y-4">
+      <FilterSection title={t("price")}>
+        <div className="space-y-4 py-2">
           <Slider
             min={priceRange.min}
             max={priceRange.max}
             step={10}
-            value={activeFilters.priceRange}
+            value={pendingFilters.priceRange}
             onValueChange={(value) =>
-              onFilterChange({
-                ...activeFilters,
+              setPendingFilters({
+                ...pendingFilters,
                 priceRange: value as [number, number],
               })
             }
-            className="[&_[role=slider]]:bg-black [&_[role=slider]]:border-black"
+            className="**:data-[slot=slider-thumb]:border-black **:data-[slot=slider-track]:bg-neutral-200 **:data-[slot=slider-range]:bg-black"
           />
           <div className="flex items-center justify-between text-sm">
-            <span>{activeFilters.priceRange[0]}&euro;</span>
-            <span>{activeFilters.priceRange[1]}&euro;</span>
+            <span>{pendingFilters.priceRange[0]}&euro;</span>
+            <span>{pendingFilters.priceRange[1]}&euro;</span>
           </div>
         </div>
       </FilterSection>
@@ -182,20 +194,40 @@ export function FilterSidebar({
       <Separator className="bg-neutral-200" />
 
       {/* Availability */}
-      <FilterSection title="Availability">
+      <FilterSection title={t("availability")}>
         <label className="flex items-center gap-3 cursor-pointer group">
           <Checkbox
-            checked={activeFilters.inStock}
+            checked={pendingFilters.inStock}
             onCheckedChange={(checked) =>
-              onFilterChange({ ...activeFilters, inStock: !!checked })
+              setPendingFilters({ ...pendingFilters, inStock: !!checked })
             }
             className="rounded-none border-neutral-300 data-[state=checked]:bg-black data-[state=checked]:border-black"
           />
           <span className="text-sm group-hover:underline underline-offset-4">
-            In Stock Only
+            {t("inStockOnly")}
           </span>
         </label>
       </FilterSection>
+
+      <Separator className="bg-neutral-200" />
+
+      {/* Apply / Clear buttons */}
+      <div className="flex flex-col gap-2 pt-4">
+        <Button
+          onClick={handleApply}
+          className="w-full bg-black text-white hover:bg-neutral-800"
+          disabled={!hasChanges}
+        >
+          {t("apply")}
+        </Button>
+        <Button
+          onClick={handleClear}
+          variant="outline"
+          className="w-full"
+        >
+          {t("clearAll")}
+        </Button>
+      </div>
     </div>
   );
 
@@ -205,15 +237,7 @@ export function FilterSidebar({
       <aside className="hidden lg:block w-64 flex-shrink-0">
         <div className="sticky top-24">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xs uppercase tracking-widest">Filters</h2>
-            {hasActiveFilters(activeFilters) && (
-              <button
-                onClick={() => onFilterChange(defaultFilters)}
-                className="text-xs underline underline-offset-4 hover:no-underline"
-              >
-                Clear All
-              </button>
-            )}
+            <h2 className="text-xs uppercase tracking-widest">{t("title")}</h2>
           </div>
           <FilterContent />
         </div>
@@ -221,16 +245,16 @@ export function FilterSidebar({
 
       {/* Mobile filter sheet */}
       <div className="lg:hidden">
-        <Sheet>
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
             <Button variant="outline" size="sm" className="gap-2">
               <SlidersHorizontal className="h-4 w-4" strokeWidth={1.5} />
-              Filters
+              {t("title")}
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-full sm:w-96 overflow-y-auto">
             <div className="flex items-center justify-between mb-8">
-              <h2 className="text-xs uppercase tracking-widest">Filters</h2>
+              <h2 className="text-xs uppercase tracking-widest">{t("title")}</h2>
             </div>
             <FilterContent />
           </SheetContent>

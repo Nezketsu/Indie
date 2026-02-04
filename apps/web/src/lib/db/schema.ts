@@ -73,6 +73,7 @@ export const products = pgTable(
     currency: varchar("currency", { length: 3 }).default("EUR"),
     compareAtPrice: decimal("compare_at_price", { precision: 10, scale: 2 }),
     isAvailable: boolean("is_available").default(true),
+    isNew: boolean("is_new").default(false),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
@@ -82,6 +83,7 @@ export const products = pgTable(
     index("idx_products_product_type").on(table.productType),
     index("idx_products_price").on(table.priceMin, table.priceMax),
     index("idx_products_slug").on(table.slug),
+    index("idx_products_is_new").on(table.isNew),
     unique("products_brand_shopify_unique").on(table.brandId, table.shopifyId),
   ]
 );
@@ -192,6 +194,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   variants: many(productVariants),
   images: many(productImages),
   productCategories: many(productCategories),
+  wishlist: many(wishlist),
 }));
 
 export const productVariantsRelations = relations(productVariants, ({ one }) => ({
@@ -269,6 +272,7 @@ export const sessions = pgTable(
 // Users relations
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
+  wishlist: many(wishlist),
 }));
 
 // Sessions relations
@@ -311,12 +315,4 @@ export const wishlistRelations = relations(wishlist, ({ one }) => ({
   }),
 }));
 
-// Update users relations to include wishlist
-export const usersWishlistRelations = relations(users, ({ many }) => ({
-  wishlist: many(wishlist),
-}));
 
-// Update products relations to include wishlist
-export const productsWishlistRelations = relations(products, ({ many }) => ({
-  wishlist: many(wishlist),
-}));

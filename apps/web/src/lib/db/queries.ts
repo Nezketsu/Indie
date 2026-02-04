@@ -88,7 +88,9 @@ export async function getProducts(options?: {
     conditions.push(lte(products.priceMax, maxPrice.toString()));
   }
 
-  if (inStock) {
+  // Always filter to only show available products by default
+  // To show sold out products, inStock must be explicitly set to false
+  if (inStock !== false) {
     conditions.push(eq(products.isAvailable, true));
   }
 
@@ -210,16 +212,7 @@ export async function getProductBySlug(slug: string) {
     },
   });
 
-  if (!product) return null;
-
-  return {
-    ...product,
-    priceMin: parseFloat(product.priceMin || "0"),
-    priceMax: parseFloat(product.priceMax || "0"),
-    compareAtPrice: product.compareAtPrice
-      ? parseFloat(product.compareAtPrice)
-      : null,
-  };
+  return product ?? null;
 }
 
 export async function getBrands() {
@@ -269,17 +262,17 @@ export async function getBrandBySlug(slug: string) {
 }
 
 export async function getFilterOptions() {
-  // Get categories (product types)
+  // Get categories (product types) - only count available products
   const productTypes = await db
     .select({
       name: products.productType,
       count: sql<number>`count(*)`,
     })
     .from(products)
-    .where(sql`${products.productType} IS NOT NULL AND ${products.productType} != ''`)
+    .where(sql`${products.productType} IS NOT NULL AND ${products.productType} != '' AND ${products.isAvailable} = true`)
     .groupBy(products.productType);
 
-  // Get brands with counts
+  // Get brands with counts - only count available products
   const brandsWithCount = await db
     .select({
       slug: brands.slug,
@@ -287,17 +280,18 @@ export async function getFilterOptions() {
       count: sql<number>`count(${products.id})`,
     })
     .from(brands)
-    .leftJoin(products, eq(brands.id, products.brandId))
+    .leftJoin(products, and(eq(brands.id, products.brandId), eq(products.isAvailable, true)))
     .where(eq(brands.isActive, true))
     .groupBy(brands.id, brands.slug, brands.name);
 
-  // Get price range
+  // Get price range - only from available products
   const priceRange = await db
     .select({
       min: sql<number>`MIN(CAST(${products.priceMin} AS DECIMAL))`,
       max: sql<number>`MAX(CAST(${products.priceMax} AS DECIMAL))`,
     })
-    .from(products);
+    .from(products)
+    .where(eq(products.isAvailable, true));
 
   // Get available sizes (from product variants)
   const sizes = await db

@@ -1,7 +1,6 @@
 import { db } from "./db";
 import { products, productImages, productVariants, brands, syncLogs } from "./db/schema";
 import { scrapeShopifyStore, ScrapedProduct } from "./scraper";
-import { categorizeProduct } from "./categorization";
 import { eq, and } from "drizzle-orm";
 
 export interface SyncResult {
@@ -48,6 +47,15 @@ export async function syncBrandProducts(
         .returning();
 
     try {
+        // Clear isNew status from all existing products for this brand
+        // This ensures only the newest scraped products will have isNew = true
+        await db
+            .update(products)
+            .set({ isNew: false })
+            .where(eq(products.brandId, brand.id));
+
+        onProgress?.(`Cleared 'new' status from existing products`);
+
         // Scrape products from Shopify
         const scrapedProducts = await scrapeShopifyStore(
             brand.shopifyDomain,
@@ -129,6 +137,12 @@ export async function syncBrandProducts(
 
 /**
  * Upsert a product and its related data
+ *
+ * IMPORTANT RULES:
+ * - Never delete existing products
+ * - Never change productType if already set (protected field)
+ * - Only update isAvailable for existing products
+ * - New products get isNew = true status
  */
 async function upsertProduct(brandId: string, scraped: ScrapedProduct): Promise<void> {
     // Check if product exists
@@ -142,42 +156,26 @@ async function upsertProduct(brandId: string, scraped: ScrapedProduct): Promise<
     let productId: string;
 
     if (existingProduct) {
-        // Only categorize if not already categorized (null, empty, or "Other")
-        const needsCategorization = !existingProduct.productType || existingProduct.productType === "Other";
-        const productType = needsCategorization
-            ? categorizeProduct(scraped.title, scraped.description).productType
-            : existingProduct.productType;
-
-        // Update existing product
+        // EXISTING PRODUCT: Only update isAvailable status
+        // productType is NEVER modified for existing products
         await db
             .update(products)
             .set({
-                title: scraped.title,
-                slug: scraped.slug,
-                description: scraped.description,
-                productType,
-                vendor: scraped.vendor,
-                tags: scraped.tags,
-                priceMin: scraped.priceMin,
-                priceMax: scraped.priceMax,
-                compareAtPrice: scraped.compareAtPrice,
-                currency: scraped.currency,
                 isAvailable: scraped.isAvailable,
-                publishedAt: scraped.publishedAt,
                 updatedAt: new Date(),
             })
             .where(eq(products.id, existingProduct.id));
 
         productId = existingProduct.id;
 
-        // Delete old variants and images
+        // Delete old variants and images to refresh them
         await db.delete(productVariants).where(eq(productVariants.productId, productId));
         await db.delete(productImages).where(eq(productImages.productId, productId));
     } else {
-        // New product: categorize it
-        const productType = categorizeProduct(scraped.title, scraped.description).productType;
+        // NEW PRODUCT: use the category from the scraper and mark as new
+        const productType = scraped.productType;
 
-        // Create new product
+        // Create new product with isNew = true
         const [newProduct] = await db
             .insert(products)
             .values({
@@ -194,6 +192,7 @@ async function upsertProduct(brandId: string, scraped: ScrapedProduct): Promise<
                 compareAtPrice: scraped.compareAtPrice,
                 currency: scraped.currency,
                 isAvailable: scraped.isAvailable,
+                isNew: true,
                 publishedAt: scraped.publishedAt,
             })
             .returning();
@@ -272,20 +271,33 @@ export async function syncAllBrands(
 }
 
 /**
- * Re-categorize all existing products
+ * Re-categorize products for a specific brand
+ *
+ * IMPORTANT: Only re-categorizes products that don't have a productType set yet.
+ * Products with an existing productType are NEVER modified by the classifier.
  */
-export async function recategorizeAllProducts(
+export async function recategorizeBrandProducts(
+    brandId: string,
     onProgress?: (message: string) => void
-): Promise<{ updated: number; errors: string[] }> {
+): Promise<{ updated: number; skipped: number; errors: string[] }> {
     const { categorizeProduct } = await import("./categorization");
 
-    const allProducts = await db.query.products.findMany();
-    onProgress?.(`Re-categorizing ${allProducts.length} products...`);
+    const brandProducts = await db.query.products.findMany({
+        where: eq(products.brandId, brandId),
+    });
+    onProgress?.(`Checking ${brandProducts.length} products for brand...`);
 
     let updated = 0;
+    let skipped = 0;
     const errors: string[] = [];
 
-    for (const product of allProducts) {
+    for (const product of brandProducts) {
+        // RULE: Never modify productType if it's already set
+        if (product.productType && product.productType.trim() !== "") {
+            skipped++;
+            continue;
+        }
+
         try {
             const categorization = categorizeProduct(product.title, product.description);
 
@@ -304,7 +316,55 @@ export async function recategorizeAllProducts(
         }
     }
 
-    onProgress?.(`Re-categorization complete: ${updated} products updated`);
+    onProgress?.(`Re-categorization complete: ${updated} updated, ${skipped} skipped (already categorized)`);
 
-    return { updated, errors };
+    return { updated, skipped, errors };
+}
+
+/**
+ * Re-categorize all existing products
+ *
+ * IMPORTANT: Only re-categorizes products that don't have a productType set yet.
+ * Products with an existing productType are NEVER modified by the classifier.
+ */
+export async function recategorizeAllProducts(
+    onProgress?: (message: string) => void
+): Promise<{ updated: number; skipped: number; errors: string[] }> {
+    const { categorizeProduct } = await import("./categorization");
+
+    const allProducts = await db.query.products.findMany();
+    onProgress?.(`Checking ${allProducts.length} products...`);
+
+    let updated = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    for (const product of allProducts) {
+        // RULE: Never modify productType if it's already set
+        if (product.productType && product.productType.trim() !== "") {
+            skipped++;
+            continue;
+        }
+
+        try {
+            const categorization = categorizeProduct(product.title, product.description);
+
+            await db
+                .update(products)
+                .set({
+                    productType: categorization.productType,
+                    updatedAt: new Date(),
+                })
+                .where(eq(products.id, product.id));
+
+            updated++;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            errors.push(`Failed to categorize ${product.title}: ${errorMessage}`);
+        }
+    }
+
+    onProgress?.(`Re-categorization complete: ${updated} updated, ${skipped} skipped (already categorized)`);
+
+    return { updated, skipped, errors };
 }

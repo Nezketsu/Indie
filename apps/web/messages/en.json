@@ -105,7 +105,8 @@
     "price": "Price",
     "availability": "Availability",
     "inStockOnly": "In Stock Only",
-    "clearAll": "Clear All"
+    "clearAll": "Clear All",
+    "apply": "Apply"
   },
   "auth": {
     "loginTitle": "Log In",
@@ -143,6 +144,15 @@
     "signUpWithGoogle": "Sign up with Google"
   },
   "account": {
+    "profile": {
+      "title": "My Profile",
+      "orders": "My Orders",
+      "ordersDesc": "Track your orders and view history",
+      "wishlist": "My Wishlist",
+      "wishlistDesc": "Your saved favorite products",
+      "settings": "Settings",
+      "settingsDesc": "Manage your account and preferences"
+    },
     "settingsTitle": "Settings",
     "personalInfo": "Personal Information",
     "emailCannotChange": "Email cannot be changed",
@@ -172,6 +182,17 @@
     "inWishlist": "In my wishlist",
     "addToWishlist": "Add to wishlist",
     "removeFromWishlist": "Remove from wishlist"
+  },
+  "newArrivals": {
+    "title": "New Arrivals",
+    "subtitle": "Discover our latest additions and the newest pieces from our independent brands.",
+    "count": "{count, plural, =1 {# product} other {# products}}",
+    "emptyTitle": "No new arrivals yet",
+    "emptyDescription": "Check back soon to discover our latest additions.",
+    "browseAll": "Browse all products",
+    "previous": "Previous",
+    "next": "Next",
+    "pageOf": "Page {current} of {total}"
   },
   "notFound": {
     "title": "Page Not Found",

@@ -44,7 +44,7 @@ export default async function ProductsPage({ params, searchParams }: PageProps) 
       size: sp.size,
       minPrice: sp.minPrice ? parseFloat(sp.minPrice) : undefined,
       maxPrice: sp.maxPrice ? parseFloat(sp.maxPrice) : undefined,
-      inStock: sp.inStock === "true",
+      inStock: sp.inStock !== "false",
       sortBy: sort,
     }),
     getFilterOptions(),

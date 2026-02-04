@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"indie-marketplace/scraper/internal/scheduler"
@@ -30,6 +31,9 @@ func main() {
 		sugar.Fatal("DATABASE_URL environment variable is required")
 	}
 
+	// Check if running in one-shot mode (for cron jobs)
+	runOnce := strings.ToLower(os.Getenv("RUN_ONCE")) == "true"
+
 	// Initialize database connection
 	ctx := context.Background()
 	db, err := storage.NewDB(ctx, dbURL)
@@ -43,7 +47,15 @@ func main() {
 	// Initialize scheduler
 	sched := scheduler.New(db, sugar)
 
-	// Start the scheduler
+	if runOnce {
+		// One-shot mode: run sync once and exit
+		sugar.Info("Running in one-shot mode (RUN_ONCE=true)")
+		sched.RunSyncNow()
+		sugar.Info("One-shot sync completed")
+		return
+	}
+
+	// Start the scheduler (continuous mode)
 	sched.Start()
 	sugar.Info("Scheduler started")
 

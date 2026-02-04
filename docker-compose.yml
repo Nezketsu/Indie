@@ -1,40 +1,198 @@
-version: '3.8'
-
 services:
+  # ===========================================
+  # DATABASE SERVICES
+  # ===========================================
+
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     container_name: indie-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: indie
-      POSTGRES_PASSWORD: indiepass
-      POSTGRES_DB: indie_marketplace
+      POSTGRES_USER: ${POSTGRES_USER:-indie}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-indiepass}
+      POSTGRES_DB: ${POSTGRES_DB:-indie_marketplace}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U indie -d indie_marketplace"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-indie} -d ${POSTGRES_DB:-indie_marketplace}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - indie-network
 
-  # Meilisearch (Phase 2)
+  # Redis Queue (for classifier)
+  redis:
+    image: redis:7-alpine
+    container_name: indie-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - indie-network
+
+  # Meilisearch (optional - for full-text search)
   meilisearch:
     image: getmeili/meilisearch:v1.6
     container_name: indie-meilisearch
     restart: unless-stopped
     environment:
-      MEILI_ENV: development
-      MEILI_MASTER_KEY: indie_meilisearch_key
+      MEILI_ENV: ${MEILI_ENV:-development}
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-indie_meilisearch_key}
     ports:
       - "7700:7700"
     volumes:
       - meilisearch_data:/meili_data
     profiles:
       - search
+    networks:
+      - indie-network
+
+  # ===========================================
+  # AI/ML SERVICES
+  # ===========================================
+
+  # Python Fashion-CLIP Model Service
+  model-service:
+    build:
+      context: ./apps/classifier/model-service
+      dockerfile: Dockerfile
+    container_name: indie-model-service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    networks:
+      - indie-network
+
+  # ===========================================
+  # APPLICATION SERVICES
+  # ===========================================
+
+  # Go Classifier API
+  classifier:
+    build:
+      context: ./apps/classifier
+      dockerfile: Dockerfile
+    container_name: indie-classifier
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_PORT=8080
+      - DATABASE_URL=postgres://${POSTGRES_USER:-indie}:${POSTGRES_PASSWORD:-indiepass}@postgres:5432/${POSTGRES_DB:-indie_marketplace}?sslmode=disable
+      - REDIS_URL=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - MODEL_SERVICE_URL=http://model-service:8000
+      - WORKER_COUNT=${CLASSIFIER_WORKER_COUNT:-4}
+      - BATCH_SIZE=${CLASSIFIER_BATCH_SIZE:-10}
+      - CONFIDENCE_THRESHOLD=${CLASSIFIER_CONFIDENCE_THRESHOLD:-0.80}
+      - GIN_MODE=release
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      model-service:
+        condition: service_healthy
+    networks:
+      - indie-network
+
+  # Go Scraper Service
+  scraper:
+    build:
+      context: ./apps/scraper
+      dockerfile: Dockerfile
+    container_name: indie-scraper
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgres://${POSTGRES_USER:-indie}:${POSTGRES_PASSWORD:-indiepass}@postgres:5432/${POSTGRES_DB:-indie_marketplace}?sslmode=disable
+      - RUN_ONCE=${SCRAPER_RUN_ONCE:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - indie-network
+
+  # Next.js Web Application
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: indie-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgres://${POSTGRES_USER:-indie}:${POSTGRES_PASSWORD:-indiepass}@postgres:5432/${POSTGRES_DB:-indie_marketplace}?sslmode=disable
+      - MEILISEARCH_HOST=http://meilisearch:7700
+      - MEILISEARCH_API_KEY=${MEILI_MASTER_KEY:-indie_meilisearch_key}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      - CRON_SECRET=${CRON_SECRET:-dev-cron-secret}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - indie-network
+
+  # ===========================================
+  # CRON JOB SERVICE
+  # ===========================================
+
+  # Daily Cron Job for Scraping + Classification
+  cron:
+    build:
+      context: ./docker/cron
+      dockerfile: Dockerfile
+    container_name: indie-cron
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgres://${POSTGRES_USER:-indie}:${POSTGRES_PASSWORD:-indiepass}@postgres:5432/${POSTGRES_DB:-indie_marketplace}?sslmode=disable
+      - CLASSIFIER_URL=http://classifier:8080
+      - WEB_URL=http://web:3000
+      - CRON_SECRET=${CRON_SECRET:-dev-cron-secret}
+      - CRON_SCHEDULE=${CRON_SCHEDULE:-0 3 * * *}
+      - RUN_ON_STARTUP=${CRON_RUN_ON_STARTUP:-false}
+      - TZ=${TZ:-Europe/Paris}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      classifier:
+        condition: service_started
+      web:
+        condition: service_started
+    networks:
+      - indie-network
 
 volumes:
   postgres_data:
+  redis_data:
   meilisearch_data:
+
+networks:
+  indie-network:
+    driver: bridge

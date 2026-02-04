@@ -3,26 +3,19 @@
 import { useState } from "react";
 import { Edit2, Check, X } from "lucide-react";
 
-// Standard product types matching the categories
+// Standard product types matching the categorization system
 const PRODUCT_TYPES = [
-    "Accessories",
-    "Blazer",
-    "Coat",
-    "Denim Jacket",
-    "Dresses",
-    "Footwear",
-    "Hoodie",
-    "Jacket",
-    "Jeans",
-    "Long Pants",
-    "Polo",
-    "Shirt",
-    "Shoes",
+    "Tops",
+    "Hoodies & Sweats",
+    "Knitwear",
+    "Jackets & Coats",
+    "Pants",
     "Shorts",
-    "Skirt",
-    "Sports Jacket",
-    "Sweater",
-    "T-shirt",
+    "Footwear",
+    "Accessories",
+    "Lifestyle",
+    "Packs & Boxes",
+    "Other",
 ];
 
 interface AdminProductTypeEditorProps {

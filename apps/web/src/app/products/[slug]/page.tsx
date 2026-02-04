@@ -6,6 +6,7 @@ import { ExternalLink, ChevronLeft } from "lucide-react";
 import { ProductImageGallery } from "@/components/products/ProductImageGallery";
 import { WishlistButton } from "@/components/products/WishlistButton";
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 60;
 
 // Generate static params for all products
@@ -68,10 +69,14 @@ export default async function ProductPage({
         }).format(price);
     };
 
+    const priceMin = parseFloat(product.priceMin || "0");
+    const priceMax = parseFloat(product.priceMax || "0");
+    const compareAtPrice = product.compareAtPrice ? parseFloat(product.compareAtPrice) : null;
+
     const priceDisplay =
-        product.priceMin === product.priceMax
-            ? formatPrice(product.priceMin)
-            : `${formatPrice(product.priceMin)} - ${formatPrice(product.priceMax)}`;
+        priceMin === priceMax
+            ? formatPrice(priceMin)
+            : `${formatPrice(priceMin)} - ${formatPrice(priceMax)}`;
 
     // Build the product URL on the brand's site
     const brandProductUrl = product.brand?.websiteUrl
@@ -119,11 +124,11 @@ export default async function ProductPage({
                         {/* Price */}
                         <div className="flex items-baseline gap-4">
                             <span className="text-2xl">{priceDisplay}</span>
-                            {product.compareAtPrice && product.compareAtPrice > product.priceMin && (
+                            {compareAtPrice && compareAtPrice > priceMin ? (
                                 <span className="text-lg text-neutral-400 line-through">
-                                    {formatPrice(product.compareAtPrice)}
+                                    {formatPrice(compareAtPrice)}
                                 </span>
-                            )}
+                            ) : null}
                         </div>
 
                         {/* Availability */}

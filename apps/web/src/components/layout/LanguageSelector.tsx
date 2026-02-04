@@ -33,9 +33,9 @@ export function LanguageSelector() {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <button className="p-2 hover:bg-neutral-100 rounded-full transition-colors flex items-center gap-1">
+                <button className="p-1.5 sm:p-2 hover:bg-neutral-100 rounded-full transition-colors flex items-center gap-1">
                     <Globe className="h-5 w-5" strokeWidth={1.5} />
-                    <span className="hidden sm:inline text-xs uppercase tracking-widest">
+                    <span className="hidden md:inline text-xs uppercase tracking-widest">
                         {locale}
                     </span>
                 </button>
