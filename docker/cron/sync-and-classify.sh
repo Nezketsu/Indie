@@ -75,7 +75,7 @@ CLASSIFY_RESPONSE=$(curl -s -w "\n%{http_code}" \
 CLASSIFY_HTTP_CODE=$(echo "$CLASSIFY_RESPONSE" | tail -n1)
 CLASSIFY_BODY=$(echo "$CLASSIFY_RESPONSE" | sed '$d')
 
-if [ "$CLASSIFY_HTTP_CODE" -eq 200 ]; then
+if [ "$CLASSIFY_HTTP_CODE" -eq 200 ] || [ "$CLASSIFY_HTTP_CODE" -eq 202 ]; then
     log "Classification sync completed successfully!"
     log "Response: $CLASSIFY_BODY"
 else
