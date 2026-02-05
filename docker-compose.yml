@@ -124,6 +124,13 @@ services:
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       - CRON_SECRET=${CRON_SECRET}
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.indie-web.rule=Host(`indiemarket.co`)
+      - traefik.http.routers.indie-web.entrypoints=web,websecure
+      - traefik.http.routers.indie-web.tls=true
+      - traefik.http.routers.indie-web.tls.certresolver=letsencrypt
+      - traefik.http.services.indie-web.loadbalancer.server.port=3000
     depends_on:
       postgres:
         condition: service_healthy
