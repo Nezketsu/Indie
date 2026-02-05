@@ -6,7 +6,7 @@ import { recategorizeAllProducts, recategorizeBrandProducts } from "@/lib/sync";
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json().catch(() => ({}));
-        const { brandId } = body;
+        const { brandId, force } = body;
 
         const logs: string[] = [];
         const onProgress = (message: string) => {
@@ -18,10 +18,10 @@ export async function POST(request: NextRequest) {
 
         if (brandId) {
             // Recategorize specific brand
-            result = await recategorizeBrandProducts(brandId, onProgress);
+            result = await recategorizeBrandProducts(brandId, onProgress, { force: !!force });
         } else {
             // Recategorize all products
-            result = await recategorizeAllProducts(onProgress);
+            result = await recategorizeAllProducts(onProgress, { force: !!force });
         }
 
         return NextResponse.json({

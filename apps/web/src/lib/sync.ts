@@ -278,22 +278,24 @@ export async function syncAllBrands(
  */
 export async function recategorizeBrandProducts(
     brandId: string,
-    onProgress?: (message: string) => void
+    onProgress?: (message: string) => void,
+    options?: { force?: boolean }
 ): Promise<{ updated: number; skipped: number; errors: string[] }> {
     const { categorizeProduct } = await import("./categorization");
+    const force = options?.force ?? false;
 
     const brandProducts = await db.query.products.findMany({
         where: eq(products.brandId, brandId),
     });
-    onProgress?.(`Checking ${brandProducts.length} products for brand...`);
+    onProgress?.(`Checking ${brandProducts.length} products for brand...${force ? " (force mode)" : ""}`);
 
     let updated = 0;
     let skipped = 0;
     const errors: string[] = [];
 
     for (const product of brandProducts) {
-        // RULE: Never modify productType if it's already set
-        if (product.productType && product.productType.trim() !== "") {
+        // Skip already-categorized products unless force mode is enabled
+        if (!force && product.productType && product.productType.trim() !== "") {
             skipped++;
             continue;
         }
@@ -324,24 +326,26 @@ export async function recategorizeBrandProducts(
 /**
  * Re-categorize all existing products
  *
- * IMPORTANT: Only re-categorizes products that don't have a productType set yet.
- * Products with an existing productType are NEVER modified by the classifier.
+ * By default, only re-categorizes products that don't have a productType set yet.
+ * Use { force: true } to re-categorize ALL products, including already classified ones.
  */
 export async function recategorizeAllProducts(
-    onProgress?: (message: string) => void
+    onProgress?: (message: string) => void,
+    options?: { force?: boolean }
 ): Promise<{ updated: number; skipped: number; errors: string[] }> {
     const { categorizeProduct } = await import("./categorization");
+    const force = options?.force ?? false;
 
     const allProducts = await db.query.products.findMany();
-    onProgress?.(`Checking ${allProducts.length} products...`);
+    onProgress?.(`Checking ${allProducts.length} products...${force ? " (force mode - reclassifying all)" : ""}`);
 
     let updated = 0;
     let skipped = 0;
     const errors: string[] = [];
 
     for (const product of allProducts) {
-        // RULE: Never modify productType if it's already set
-        if (product.productType && product.productType.trim() !== "") {
+        // Skip already-categorized products unless force mode is enabled
+        if (!force && product.productType && product.productType.trim() !== "") {
             skipped++;
             continue;
         }

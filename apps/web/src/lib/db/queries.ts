@@ -271,20 +271,18 @@ export async function getBrandBySlug(slug: string) {
 }
 
 export async function getFilterOptions() {
-  // Get categories from the categories table with product counts
+  // Get categories from the categories table with in-stock product counts
   const categoriesWithCount = await db
     .select({
       id: categories.id,
       name: categories.name,
       slug: categories.slug,
-      count: sql<number>`CAST((
-        SELECT COUNT(DISTINCT pc.product_id)
-        FROM product_categories pc
-        JOIN products p ON pc.product_id = p.id
-        WHERE pc.category_id = ${categories.id}
-      ) AS INTEGER)`,
+      count: sql<number>`CAST(COUNT(DISTINCT CASE WHEN ${products.isAvailable} = true THEN ${productCategories.productId} END) AS INTEGER)`,
     })
     .from(categories)
+    .leftJoin(productCategories, eq(categories.id, productCategories.categoryId))
+    .leftJoin(products, eq(productCategories.productId, products.id))
+    .groupBy(categories.id, categories.name, categories.slug)
     .orderBy(categories.name);
 
   // Get brands with counts - only count available products

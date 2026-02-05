@@ -28,6 +28,7 @@ type Database interface {
 	ApproveClassification(ctx context.Context, id uuid.UUID, reviewerID string) error
 	UpdateClassification(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
 	GetProductsWithoutClassification(ctx context.Context, limit int) ([]ProductInfo, error)
+	GetAllProductsForClassification(ctx context.Context, limit int) ([]ProductInfo, error)
 }
 
 type ProductInfo struct {
@@ -372,14 +373,30 @@ func (h *Handler) GetStats(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
-// SyncProducts queues all unclassified products for classification
+// SyncProducts queues products for classification
+// Use ?force=true to reclassify all products (including already classified ones)
 func (h *Handler) SyncProducts(c *gin.Context) {
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
-	if limit > 1000 {
-		limit = 1000
+	force := c.DefaultQuery("force", "false") == "true"
+	defaultLimit := "100"
+	maxLimit := 1000
+	if force {
+		defaultLimit = "10000"
+		maxLimit = 10000
+	}
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", defaultLimit))
+	if limit > maxLimit {
+		limit = maxLimit
 	}
 
-	products, err := h.db.GetProductsWithoutClassification(c.Request.Context(), limit)
+	var products []ProductInfo
+	var err error
+
+	if force {
+		products, err = h.db.GetAllProductsForClassification(c.Request.Context(), limit)
+	} else {
+		products, err = h.db.GetProductsWithoutClassification(c.Request.Context(), limit)
+	}
+
 	if err != nil {
 		h.logger.Error("Failed to get products", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get products"})
@@ -388,7 +405,7 @@ func (h *Handler) SyncProducts(c *gin.Context) {
 
 	if len(products) == 0 {
 		c.JSON(http.StatusOK, gin.H{
-			"message": "No unclassified products found",
+			"message": "No products found",
 			"queued":  0,
 		})
 		return
@@ -412,5 +429,6 @@ func (h *Handler) SyncProducts(c *gin.Context) {
 	c.JSON(http.StatusAccepted, gin.H{
 		"message": "Products queued for classification",
 		"queued":  len(products),
+		"force":   force,
 	})
 }

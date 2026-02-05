@@ -172,43 +172,29 @@ func (db *PostgresDB) UpdateProductClassification(ctx context.Context, productID
 	return err
 }
 
-// mapCategoryToProductType maps internal categories to product_type values
-// Direct 1:1 mapping from HuggingFace model labels (dima806/clothes_image_detection)
+// mapCategoryToProductType maps AI categories to the storefront filter categories:
+// Accessories, Footwear, Hoodies & Sweats, Jackets & Coats, Knitwear,
+// Lifestyle, Other, Packs & Boxes, Pants, Shorts, Tops
 func mapCategoryToProductType(cat models.Category, subCat models.SubCategory) string {
-	// Direct mapping - category slug becomes the product_type
 	switch cat {
-	case models.CategoryBlazer:
-		return "Blazer"
-	case models.CategoryDenimJacket:
-		return "Denim Jacket"
-	case models.CategoryDresses:
-		return "Dresses"
+	case models.CategoryTShirt, models.CategoryPolo, models.CategoryShirt:
+		return "Tops"
 	case models.CategoryHoodie:
-		return "Hoodie"
-	case models.CategoryJacket:
-		return "Jacket"
-	case models.CategoryJeans:
-		return "Jeans"
-	case models.CategoryLongPants:
-		return "Long Pants"
-	case models.CategoryPolo:
-		return "Polo"
-	case models.CategoryShirt:
-		return "Shirt"
+		return "Hoodies & Sweats"
+	case models.CategorySweater:
+		return "Knitwear"
+	case models.CategoryJacket, models.CategoryBlazer, models.CategoryDenimJacket, models.CategorySportsJacket:
+		return "Jackets & Coats"
+	case models.CategoryJeans, models.CategoryLongPants:
+		return "Pants"
 	case models.CategoryShorts:
 		return "Shorts"
-	case models.CategorySkirt:
-		return "Skirt"
-	case models.CategorySportsJacket:
-		return "Sports Jacket"
-	case models.CategorySweater:
-		return "Sweater"
-	case models.CategoryTShirt:
-		return "T-shirt"
 	case models.CategoryShoes:
-		return "Shoes"
+		return "Footwear"
 	case models.CategoryAccessories:
 		return "Accessories"
+	case models.CategoryDresses, models.CategorySkirt:
+		return "Other"
 	default:
 		return "Other"
 	}
@@ -394,6 +380,39 @@ func (db *PostgresDB) GetProductsWithoutClassification(ctx context.Context, limi
 		FROM products p
 		LEFT JOIN product_classifications pc ON p.id = pc.product_id
 		WHERE pc.id IS NULL
+		LIMIT $1
+	`
+
+	rows, err := db.pool.Query(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var products []ProductInfo
+	for rows.Next() {
+		var p ProductInfo
+		if err := rows.Scan(&p.ID, &p.Title, &p.ImageURL, &p.BrandID); err != nil {
+			return nil, err
+		}
+		if p.ImageURL != "" {
+			products = append(products, p)
+		}
+	}
+
+	return products, nil
+}
+
+// GetAllProductsForClassification returns all products with images (for force reclassification)
+func (db *PostgresDB) GetAllProductsForClassification(ctx context.Context, limit int) ([]ProductInfo, error) {
+	query := `
+		SELECT p.id, p.title,
+			COALESCE(
+				(SELECT src FROM product_images WHERE product_id = p.id ORDER BY position LIMIT 1),
+				''
+			) as image_url,
+			p.brand_id
+		FROM products p
 		LIMIT $1
 	`
 
