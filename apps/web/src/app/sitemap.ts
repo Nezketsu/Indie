@@ -2,14 +2,19 @@ import { MetadataRoute } from 'next';
 import { getBrands } from '@/lib/db/queries';
 import { routing } from '@/i18n/routing';
 
+// Force dynamic rendering at runtime (not during build)
+export const dynamic = 'force-dynamic';
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://indiemarket.co';
 
-    // Fetch dynamic data
-    // Only fetching brands for now to focus on the user's goal (independent brands)
-    // We can add products later if needed, but for "marques indépendantes" queries, 
-    // brand pages are the most relevant landing pages.
-    const brandsData = await getBrands();
+    // Fetch brands with error handling for build time
+    let brandsData: { slug: string }[] = [];
+    try {
+        brandsData = await getBrands();
+    } catch {
+        // DB not available during build - return static routes only
+    }
 
     const staticRoutes = [
         '',
