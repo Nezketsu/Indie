@@ -205,7 +205,7 @@ var hfLabelToCategory = map[string]models.Category{
 	"denim jacket":  models.CategoryDenimJacket,
 	"dresses":       models.CategoryDresses,
 	"a dress":       models.CategoryDresses,
-	"hoodie":        models.CategoryHoodie,
+	"hoodie":        models.CategoryHoodiesSweats,
 	"jacket":        models.CategoryJacket,
 	"jeans":         models.CategoryJeans,
 	"long pants":    models.CategoryLongPants,
@@ -256,9 +256,9 @@ var titleKeywords = map[string]models.Category{
 	"tee":        models.CategoryTShirt,
 	"tshirt":     models.CategoryTShirt,
 	"longsleeve": models.CategoryTShirt,
-	"hoodie":     models.CategoryHoodie,
-	"hoodies":    models.CategoryHoodie,
-	"crewneck":   models.CategorySweater,
+	"hoodie":     models.CategoryHoodiesSweats,
+	"hoodies":    models.CategoryHoodiesSweats,
+	"crewneck":   models.CategoryHoodiesSweats,
 	"sweater":    models.CategorySweater,
 	"knit":       models.CategorySweater,
 	"knitwear":   models.CategorySweater,
@@ -266,11 +266,11 @@ var titleKeywords = map[string]models.Category{
 	"polo":       models.CategoryPolo,
 	"shirt":      models.CategoryShirt,
 	// French
-	"sweat":    models.CategorySweater,
-	"pull":     models.CategorySweater,
-	"tricot":   models.CategorySweater,
-	"maille":   models.CategorySweater,
-	"chemise":  models.CategoryShirt,
+	"sweat":     models.CategoryHoodiesSweats,
+	"pull":      models.CategoryHoodiesSweats,
+	"tricot":    models.CategorySweater,
+	"maille":    models.CategorySweater,
+	"chemise":   models.CategoryShirt,
 	"debardeur": models.CategoryTShirt,
 
 	// Pants
@@ -284,8 +284,8 @@ var titleKeywords = map[string]models.Category{
 	"cargo":   models.CategoryLongPants,
 	"trouser": models.CategoryLongPants,
 	// French
-	"pantalon":  models.CategoryLongPants,
-	"jogging":   models.CategoryLongPants,
+	"pantalon":    models.CategoryLongPants,
+	"jogging":     models.CategoryLongPants,
 	"survetement": models.CategoryLongPants,
 
 	// Dresses/Skirts
@@ -293,8 +293,8 @@ var titleKeywords = map[string]models.Category{
 	"dresses": models.CategoryDresses,
 	"skirt":   models.CategorySkirt,
 	// French
-	"robe":  models.CategoryDresses,
-	"jupe":  models.CategorySkirt,
+	"robe": models.CategoryDresses,
+	"jupe": models.CategorySkirt,
 
 	// Accessories - IMPORTANT: casquette must be here!
 	"bag":       models.CategoryAccessories,
@@ -319,20 +319,20 @@ var titleKeywords = map[string]models.Category{
 	"flask":     models.CategoryAccessories,
 	"ashtray":   models.CategoryAccessories,
 	// French accessories
-	"casquette":  models.CategoryAccessories,
-	"chapeau":    models.CategoryAccessories,
-	"bonnet":     models.CategoryAccessories,
-	"cagoule":    models.CategoryAccessories,
-	"echarpe":    models.CategoryAccessories,
-	"foulard":    models.CategoryAccessories,
-	"gants":      models.CategoryAccessories,
-	"ceinture":   models.CategoryAccessories,
-	"sac":        models.CategoryAccessories,
-	"sacoche":    models.CategoryAccessories,
-	"collier":    models.CategoryAccessories,
-	"bague":      models.CategoryAccessories,
-	"bijoux":     models.CategoryAccessories,
-	"chaussettes": models.CategoryAccessories,
+	"casquette":    models.CategoryAccessories,
+	"chapeau":      models.CategoryAccessories,
+	"bonnet":       models.CategoryAccessories,
+	"cagoule":      models.CategoryAccessories,
+	"echarpe":      models.CategoryAccessories,
+	"foulard":      models.CategoryAccessories,
+	"gants":        models.CategoryAccessories,
+	"ceinture":     models.CategoryAccessories,
+	"sac":          models.CategoryAccessories,
+	"sacoche":      models.CategoryAccessories,
+	"collier":      models.CategoryAccessories,
+	"bague":        models.CategoryAccessories,
+	"bijoux":       models.CategoryAccessories,
+	"chaussettes":  models.CategoryAccessories,
 	"portefeuille": models.CategoryAccessories,
 
 	// Footwear → Shoes
@@ -381,17 +381,17 @@ var highPriorityKeywords = map[string]bool{
 	"polo":        true,
 	"shirt":       true,
 	// French clothing
-	"veste":       true,
-	"manteau":     true,
-	"blouson":     true,
-	"doudoune":    true,
-	"pantalon":    true,
-	"jogging":     true,
-	"robe":        true,
-	"jupe":        true,
-	"chemise":     true,
-	"pull":        true,
-	"sweat":       true,
+	"veste":    true,
+	"manteau":  true,
+	"blouson":  true,
+	"doudoune": true,
+	"pantalon": true,
+	"jogging":  true,
+	"robe":     true,
+	"jupe":     true,
+	"chemise":  true,
+	"pull":     true,
+	"sweat":    true,
 	// Accessories - high priority
 	"bag":       true,
 	"backpack":  true,
@@ -554,11 +554,14 @@ func (c *FashionCLIPClient) decideCategory(
 
 	// Hoodie (explicit)
 	if strings.Contains(titleLower, "hoodie") {
-		return models.CategoryHoodie
+		return models.CategoryHoodiesSweats
 	}
 
-	// Crewneck, sweater, knitwear, mohair → Sweater
-	if strings.Contains(titleLower, "crewneck") || strings.Contains(titleLower, "sweater") ||
+	// Crewneck, sweat -> Hoodies & Sweats. Sweater, knitwear, mohair -> Sweater (Knitwear)
+	if strings.Contains(titleLower, "crewneck") {
+		return models.CategoryHoodiesSweats
+	}
+	if strings.Contains(titleLower, "sweater") ||
 		strings.Contains(titleLower, "knitwear") || strings.Contains(titleLower, "mohair") {
 		return models.CategorySweater
 	}
@@ -629,7 +632,7 @@ func (c *FashionCLIPClient) decideCategory(
 		}
 		// "zip" alone = hoodie (pull zippé)
 		if !hasExplicitKeyword {
-			return models.CategoryHoodie
+			return models.CategoryHoodiesSweats
 		}
 	}
 

@@ -69,7 +69,8 @@ export const SLUG_TO_DISPLAY: Record<HFCategorySlug, HFModelLabel> = {
 // Category groupings for UI filtering
 export const CATEGORY_GROUPS = {
     "Tops": ["t-shirt", "polo", "shirt"] as HFCategorySlug[],
-    "Sweats & Knitwear": ["hoodie", "sweater"] as HFCategorySlug[],
+    "Hoodies": ["hoodie"] as HFCategorySlug[],
+    "Sweats & Knitwear": ["sweater"] as HFCategorySlug[],
     "Outerwear": ["blazer", "coat", "denim-jacket", "jacket", "sports-jacket"] as HFCategorySlug[],
     "Bottoms": ["jeans", "long-pants", "shorts", "skirt"] as HFCategorySlug[],
     "Dresses": ["dresses"] as HFCategorySlug[],

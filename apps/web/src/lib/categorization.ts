@@ -288,7 +288,7 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
 // Words that should NOT trigger certain categories (exclusions)
 const CATEGORY_EXCLUSIONS: Record<string, string[]> = {
     "Accessories": ["chain link", "stormchaser", "windchaser", "chainsaw"],
-    "Tops": ["hoodie", "jacket", "pants", "shorts", "coat"],
+    "Tops": ["hoodie", "jacket", "pants", "shorts", "coat", "sweatshirt", "fleece"],
     "Hoodies & Sweats": ["jacket", "coat", "parka", "vest", "gilet"],
     "Knitwear": ["jacket", "coat"],
     "Jackets & Coats": ["coat-of-arms"],
@@ -323,7 +323,7 @@ const CATEGORY_PRIORITY: string[] = [
     "Shorts",            // Before pants (more specific)
 
     // Main clothing
-    "Hoodies & Sweats",  // Before tops (hoodie > shirt)
+    "Hoodies & Sweats",  // Combined category
     "Tops",
     "Jackets & Coats",
     "Pants",

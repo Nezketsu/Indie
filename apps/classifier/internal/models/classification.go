@@ -12,20 +12,21 @@ type Category string
 
 const (
 	// Direct mapping to HuggingFace model labels
-	CategoryBlazer       Category = "blazer"
-	CategoryDenimJacket  Category = "denim-jacket"
-	CategoryDresses      Category = "dresses"
-	CategoryHoodie       Category = "hoodie"
-	CategoryJacket       Category = "jacket"
-	CategoryJeans        Category = "jeans"
-	CategoryLongPants    Category = "long-pants"
-	CategoryPolo         Category = "polo"
-	CategoryShirt        Category = "shirt"
-	CategoryShorts       Category = "shorts"
-	CategorySkirt        Category = "skirt"
-	CategorySportsJacket Category = "sports-jacket"
-	CategorySweater      Category = "sweater"
-	CategoryTShirt       Category = "t-shirt"
+	CategoryBlazer        Category = "blazer"
+	CategoryDenimJacket   Category = "denim-jacket"
+	CategoryDresses       Category = "dresses"
+	CategoryHoodie        Category = "hoodie"
+	CategoryJacket        Category = "jacket"
+	CategoryJeans         Category = "jeans"
+	CategoryLongPants     Category = "long-pants"
+	CategoryPolo          Category = "polo"
+	CategoryShirt         Category = "shirt"
+	CategoryShorts        Category = "shorts"
+	CategorySkirt         Category = "skirt"
+	CategorySportsJacket  Category = "sports-jacket"
+	CategorySweater       Category = "Knitwear"
+	CategoryTShirt        Category = "t-shirt"
+	CategoryHoodiesSweats Category = "Hoodies & Sweats"
 
 	// Additional categories
 	CategoryShoes       Category = "shoes"
@@ -43,7 +44,7 @@ const (
 	SubCategoryTank       SubCategory = "tank"
 	SubCategoryLongsleeve SubCategory = "longsleeve"
 
-	// Hoodies & Sweats (zip-up vs pullover)
+	// Hoodies (zip-up vs pullover)
 	SubCategoryHoodiePullover SubCategory = "hoodie-pullover"
 	SubCategoryHoodieZipUp    SubCategory = "hoodie-zip-up"
 

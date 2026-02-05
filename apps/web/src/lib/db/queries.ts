@@ -544,6 +544,17 @@ export async function updateProductType(
   productId: string,
   productType: string
 ) {
+  // Check if a category exists with this name (case insensitive match)
+  const category = await db.query.categories.findFirst({
+    where: sql`LOWER(${categories.name}) = LOWER(${productType})`,
+  });
+
+  if (category) {
+    // If category found, use the full update logic (links + type)
+    return updateProductCategory(productId, category.id);
+  }
+
+  // Fallback: just update the type string if no category matches
   await db
     .update(products)
     .set({ productType })

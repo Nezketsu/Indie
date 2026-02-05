@@ -173,14 +173,20 @@ func (db *PostgresDB) UpdateProductClassification(ctx context.Context, productID
 }
 
 // mapCategoryToProductType maps AI categories to the storefront filter categories:
-// Accessories, Footwear, Hoodies & Sweats, Jackets & Coats, Knitwear,
+// Accessories, Footwear, Hoodies, Sweats, Jackets & Coats, Knitwear,
 // Lifestyle, Other, Packs & Boxes, Pants, Shorts, Tops
 func mapCategoryToProductType(cat models.Category, subCat models.SubCategory) string {
 	switch cat {
 	case models.CategoryTShirt, models.CategoryPolo, models.CategoryShirt:
 		return "Tops"
 	case models.CategoryHoodie:
-		return "Hoodies & Sweats"
+		// Distinguish hoodies (with hood) from sweats (crewnecks, zips without hood)
+		switch subCat {
+		case models.SubCategoryCrewneck, models.SubCategorySweatshirt:
+			return "Sweats"
+		default:
+			return "Hoodies"
+		}
 	case models.CategorySweater:
 		return "Knitwear"
 	case models.CategoryJacket, models.CategoryBlazer, models.CategoryDenimJacket, models.CategorySportsJacket:
