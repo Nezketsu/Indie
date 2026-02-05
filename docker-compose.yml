@@ -127,19 +127,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    ports:
+      - "3000:3000"
     networks:
       - indie-network
-      - dokploy-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.indiemarket-web.rule=Host(`indiemarket.co`)"
-      - "traefik.http.routers.indiemarket-web.entrypoints=web"
-      - "traefik.http.routers.indiemarket-web.middlewares=redirect-to-https@file"
-      - "traefik.http.routers.indiemarket-websecure.rule=Host(`indiemarket.co`)"
-      - "traefik.http.routers.indiemarket-websecure.entrypoints=websecure"
-      - "traefik.http.routers.indiemarket-websecure.tls.certresolver=letsencrypt"
-      - "traefik.http.services.indiemarket-service.loadbalancer.server.port=3000"
-      - "traefik.docker.network=dokploy-network"
 
   # ===========================================
   # CRON JOB SERVICE
@@ -176,7 +167,4 @@ volumes:
 
 networks:
   indie-network:
-    driver: overlay
-    attachable: true
-  dokploy-network:
-    external: true
+    driver: bridge

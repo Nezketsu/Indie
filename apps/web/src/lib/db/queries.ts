@@ -282,7 +282,6 @@ export async function getFilterOptions() {
         FROM product_categories pc
         JOIN products p ON pc.product_id = p.id
         WHERE pc.category_id = ${categories.id}
-        AND p.is_available = true
       ) AS INTEGER)`,
     })
     .from(categories)
