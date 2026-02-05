@@ -130,6 +130,21 @@ services:
     networks:
       - indie-network
       - dokploy-network
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        # HTTP Router (redirects to HTTPS)
+        - "traefik.http.routers.indiemarket-web.rule=Host(`indiemarket.co`)"
+        - "traefik.http.routers.indiemarket-web.entrypoints=web"
+        - "traefik.http.routers.indiemarket-web.middlewares=redirect-to-https@file"
+        # HTTPS Router
+        - "traefik.http.routers.indiemarket-websecure.rule=Host(`indiemarket.co`)"
+        - "traefik.http.routers.indiemarket-websecure.entrypoints=websecure"
+        - "traefik.http.routers.indiemarket-websecure.tls.certresolver=letsencrypt"
+        # Service configuration
+        - "traefik.http.services.indiemarket-service.loadbalancer.server.port=3000"
+        # Network for Traefik to use
+        - "traefik.docker.network=dokploy-network"
 
   # ===========================================
   # CRON JOB SERVICE
@@ -166,6 +181,7 @@ volumes:
 
 networks:
   indie-network:
-    driver: bridge
+    driver: overlay
+    attachable: true
   dokploy-network:
     external: true
