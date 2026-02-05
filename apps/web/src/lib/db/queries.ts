@@ -510,12 +510,31 @@ export async function updateProductCategory(
     .delete(productCategories)
     .where(eq(productCategories.productId, productId));
 
-  // If categoryId is provided, insert new association
   if (categoryId) {
+    // Get the category name to sync product_type
+    const category = await db.query.categories.findFirst({
+      where: eq(categories.id, categoryId),
+    });
+
+    // Insert new association
     await db.insert(productCategories).values({
       productId,
       categoryId,
     });
+
+    // Also update product_type on the products table to stay in sync
+    if (category) {
+      await db
+        .update(products)
+        .set({ productType: category.name })
+        .where(eq(products.id, productId));
+    }
+  } else {
+    // No category - clear product_type as well
+    await db
+      .update(products)
+      .set({ productType: null })
+      .where(eq(products.id, productId));
   }
 
   return { success: true };

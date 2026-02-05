@@ -83,14 +83,16 @@ export function AdminProductsClient({
             });
 
             if (response.ok) {
+                const matchedCategory = categoryId
+                    ? categories.find((c) => c.id === categoryId) || null
+                    : null;
                 setProducts((prev) =>
                     prev.map((p) =>
                         p.id === productId
                             ? {
                                 ...p,
-                                category: categoryId
-                                    ? categories.find((c) => c.id === categoryId) || null
-                                    : null,
+                                category: matchedCategory,
+                                productType: matchedCategory?.name || null,
                             }
                             : p
                     )
