@@ -277,13 +277,13 @@ export async function getFilterOptions() {
       id: categories.id,
       name: categories.name,
       slug: categories.slug,
-      count: sql<number>`(
+      count: sql<number>`CAST((
         SELECT COUNT(DISTINCT pc.product_id)
         FROM product_categories pc
         JOIN products p ON pc.product_id = p.id
         WHERE pc.category_id = ${categories.id}
         AND p.is_available = true
-      )`,
+      ) AS INTEGER)`,
     })
     .from(categories)
     .orderBy(categories.name);
