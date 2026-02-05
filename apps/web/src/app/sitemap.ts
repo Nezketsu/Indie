@@ -28,10 +28,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const routes: MetadataRoute.Sitemap = [];
 
     for (const locale of routing.locales) {
+        // French (default) has no prefix, English has /en
+        const localePrefix = locale === 'fr' ? '' : `/${locale}`;
+
         // Add static routes
         for (const route of staticRoutes) {
             routes.push({
-                url: `${baseUrl}/${locale}${route}`,
+                url: `${baseUrl}${localePrefix}${route}`,
                 lastModified: new Date(),
                 changeFrequency: route === '' ? 'daily' : 'weekly',
                 priority: route === '' ? 1 : 0.8,
@@ -41,8 +44,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         // Add brand routes
         for (const brand of brandsData) {
             routes.push({
-                url: `${baseUrl}/${locale}/brands/${brand.slug}`,
-                lastModified: new Date(), // Ideally we'd have a last updated date on the brand
+                url: `${baseUrl}${localePrefix}/brands/${brand.slug}`,
+                lastModified: new Date(),
                 changeFrequency: 'weekly',
                 priority: 0.7,
             });
