@@ -16,6 +16,7 @@ interface PageProps {
     maxPrice?: string;
     inStock?: string;
     page?: string;
+    search?: string;
   }>;
 }
 
@@ -46,6 +47,7 @@ export default async function ProductsPage({ params, searchParams }: PageProps) 
       maxPrice: sp.maxPrice ? parseFloat(sp.maxPrice) : undefined,
       inStock: sp.inStock !== "false",
       sortBy: sort,
+      search: sp.search,
     }),
     getFilterOptions(),
   ]);
@@ -69,6 +71,7 @@ export default async function ProductsPage({ params, searchParams }: PageProps) 
         totalPages={totalPages}
         currentSort={sort}
         isAdmin={userIsAdmin}
+        searchQuery={sp.search}
       />
     </div>
   );

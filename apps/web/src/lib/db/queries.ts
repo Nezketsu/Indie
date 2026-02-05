@@ -12,6 +12,7 @@ export async function getProducts(options?: {
   maxPrice?: number;
   inStock?: boolean;
   sortBy?: "newest" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
+  search?: string;
 }) {
   const {
     limit = 20,
@@ -23,10 +24,19 @@ export async function getProducts(options?: {
     maxPrice,
     inStock,
     sortBy = "newest",
+    search,
   } = options || {};
 
   // Build where conditions
   const conditions = [];
+
+  // Text search on title and brand name
+  if (search && search.trim()) {
+    const searchTerm = `%${search.trim().toLowerCase()}%`;
+    conditions.push(
+      sql`(LOWER(${products.title}) LIKE ${searchTerm} OR LOWER(${products.description}) LIKE ${searchTerm})`
+    );
+  }
 
   if (brandSlug) {
     const brand = await db.query.brands.findFirst({
@@ -559,6 +569,17 @@ export async function updateProductType(
     .update(products)
     .set({ productType })
     .where(eq(products.id, productId));
+
+  return { success: true };
+}
+
+export async function deleteProduct(productId: string) {
+  // Cascade delete will automatically remove:
+  // - product_variants
+  // - product_images
+  // - product_categories
+  // - wishlist items
+  await db.delete(products).where(eq(products.id, productId));
 
   return { success: true };
 }

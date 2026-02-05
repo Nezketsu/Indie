@@ -45,6 +45,7 @@ interface ProductsClientWrapperProps {
   totalPages: number;
   currentSort: SortOption;
   isAdmin?: boolean;
+  searchQuery?: string;
 }
 
 export function ProductsClientWrapper({
@@ -55,10 +56,18 @@ export function ProductsClientWrapper({
   totalPages,
   currentSort,
   isAdmin = false,
+  searchQuery,
 }: ProductsClientWrapperProps) {
   const t = useTranslations('products');
+  const tSearch = useTranslations('search');
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const clearSearch = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("search");
+    router.push(`/products${params.toString() ? `?${params.toString()}` : ""}`);
+  };
 
   const [filters, setFilters] = useState<FilterState>({
     categories: searchParams.get("category")?.split(",").filter(Boolean) || [],
@@ -76,6 +85,12 @@ export function ProductsClientWrapper({
 
   const updateURL = (newFilters: FilterState, newSort: SortOption) => {
     const params = new URLSearchParams();
+
+    // Preserve search query if present
+    const searchQuery = searchParams.get("search");
+    if (searchQuery) {
+      params.set("search", searchQuery);
+    }
 
     if (newSort !== "newest") {
       params.set("sort", newSort);
@@ -131,6 +146,19 @@ export function ProductsClientWrapper({
       />
 
       <div className="flex-1">
+        {searchQuery && (
+          <div className="flex items-center gap-2 mb-4 p-3 bg-neutral-50 rounded-lg">
+            <span className="text-sm text-neutral-600">
+              {tSearch('resultsFound')}: &quot;{searchQuery}&quot;
+            </span>
+            <button
+              onClick={clearSearch}
+              className="ml-auto text-xs text-neutral-500 hover:text-neutral-800 underline"
+            >
+              {tSearch('clearSearch')}
+            </button>
+          </div>
+        )}
         <div className="flex items-center justify-between mb-8">
           <p className="text-sm text-neutral-500">{t('count', { count: total })}</p>
           <div className="flex items-center gap-4">

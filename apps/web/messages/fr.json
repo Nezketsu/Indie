@@ -225,5 +225,18 @@
     "cookiesText": "Nous utilisons des cookies essentiels pour le fonctionnement du site et des cookies analytiques pour comprendre comment vous utilisez IndieMarket.",
     "contactTitle": "Contact",
     "contactText": "Pour toute question concernant vos données personnelles, contactez-nous à indiemarket@outlook.fr."
+  },
+  "search": {
+    "resultFound": "résultat trouvé",
+    "resultsFound": "Résultats pour",
+    "viewAllResults": "Voir tous les résultats",
+    "noResults": "Aucun résultat trouvé pour votre recherche.",
+    "clearSearch": "Effacer la recherche"
+  },
+  "admin": {
+    "delete": "Supprimer",
+    "confirm": "Confirmer",
+    "cancel": "Annuler",
+    "deleting": "Suppression..."
   }
 }

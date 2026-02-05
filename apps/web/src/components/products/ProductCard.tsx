@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { WishlistButton } from "./WishlistButton";
 import { AdminProductTypeEditor } from "@/components/admin/AdminProductTypeEditor";
+import { AdminDeleteButton } from "@/components/admin/AdminDeleteButton";
 
 interface ProductCardProps {
   product: {
@@ -76,12 +77,16 @@ export function ProductCard({ product, isAdmin = false }: ProductCardProps) {
           )}
         </div>
 
-        {/* Admin product type editor at bottom left */}
+        {/* Admin controls at bottom left */}
         {isAdmin && (
-          <div className="absolute bottom-3 left-3 z-10">
+          <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1">
             <AdminProductTypeEditor
               productId={product.id}
               currentType={product.productType || null}
+            />
+            <AdminDeleteButton
+              productId={product.id}
+              productTitle={product.title}
             />
           </div>
         )}

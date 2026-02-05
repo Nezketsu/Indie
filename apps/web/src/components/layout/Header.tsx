@@ -1,7 +1,7 @@
 "use client";
 
 import { Link, useRouter } from "@/i18n/navigation";
-import { Search, Menu, X, User, LogIn, UserPlus, Settings, Heart, LogOut, ChevronRight } from "lucide-react";
+import { Search, Menu, X, User, LogIn, UserPlus, Settings, Heart, LogOut, ChevronRight, Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   DropdownMenu,
@@ -10,19 +10,78 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { useTranslations } from "next-intl";
 import { LanguageSelector } from "./LanguageSelector";
+import Image from "next/image";
+
+interface SearchProduct {
+  id: string;
+  title: string;
+  slug: string;
+  priceMin: number;
+  currency: string;
+  brand: { name: string; slug: string };
+  images: { src: string; alt: string }[];
+}
 
 export function Header() {
   const t = useTranslations();
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchProduct[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchTotal, setSearchTotal] = useState(0);
   const { user, isAuthenticated, logout } = useAuth();
   const { items: wishlistItems } = useWishlist();
   const router = useRouter();
+
+  // Debounced search
+  useEffect(() => {
+    if (!searchQuery || searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      setSearchTotal(0);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+        const data = await res.json();
+        if (data.success) {
+          setSearchResults(data.data.products);
+          setSearchTotal(data.data.total);
+        }
+      } catch (error) {
+        console.error("Search error:", error);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleSearchClose = useCallback(() => {
+    setSearchOpen(false);
+    setSearchQuery("");
+    setSearchResults([]);
+    setSearchTotal(0);
+  }, []);
+
+  const handleProductClick = useCallback((slug: string) => {
+    handleSearchClose();
+    router.push(`/products/${slug}` as "/products");
+  }, [handleSearchClose, router]);
+
+  const handleViewAllResults = useCallback(() => {
+    handleSearchClose();
+    router.push(`/products?search=${encodeURIComponent(searchQuery)}` as "/products");
+  }, [handleSearchClose, router, searchQuery]);
 
   const navigation = [
     { name: t("nav.newArrivals"), href: "/new-arrivals" as const },
@@ -273,18 +332,86 @@ export function Header() {
         <div className="fixed inset-0 bg-white z-50 flex flex-col">
           <div className="container mx-auto px-4 py-4 flex items-center justify-between">
             <span className="font-serif text-xl tracking-tight">INDIEMARKET</span>
-            <button onClick={() => setSearchOpen(false)}>
+            <button onClick={handleSearchClose}>
               <X className="h-5 w-5" strokeWidth={1.5} />
             </button>
           </div>
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex flex-col items-center pt-8 md:pt-16 overflow-y-auto">
             <div className="w-full max-w-2xl px-4">
-              <input
-                type="search"
-                placeholder={t("header.searchPlaceholder")}
-                autoFocus
-                className="w-full text-2xl md:text-4xl font-serif border-b border-black pb-4 bg-transparent focus:outline-none placeholder:text-neutral-300"
-              />
+              <div className="relative">
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={t("header.searchPlaceholder")}
+                  autoFocus
+                  className="w-full text-2xl md:text-4xl font-serif border-b border-black pb-4 bg-transparent focus:outline-none placeholder:text-neutral-300"
+                />
+                {searchLoading && (
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2">
+                    <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
+                  </div>
+                )}
+              </div>
+
+              {/* Search Results */}
+              {searchQuery.length >= 2 && !searchLoading && (
+                <div className="mt-8">
+                  {searchResults.length > 0 ? (
+                    <>
+                      <p className="text-sm text-neutral-500 mb-4">
+                        {searchTotal} {searchTotal === 1 ? t("search.resultFound") : t("search.resultsFound")}
+                      </p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {searchResults.map((product) => (
+                          <button
+                            key={product.id}
+                            onClick={() => handleProductClick(product.slug)}
+                            className="text-left group"
+                          >
+                            <div className="aspect-[3/4] bg-neutral-100 rounded-lg overflow-hidden mb-2">
+                              {product.images[0] ? (
+                                <Image
+                                  src={product.images[0].src}
+                                  alt={product.images[0].alt}
+                                  width={200}
+                                  height={267}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-neutral-400">
+                                  <Search className="h-8 w-8" />
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-xs text-neutral-500 uppercase tracking-wide">
+                              {product.brand.name}
+                            </p>
+                            <p className="text-sm font-medium truncate group-hover:underline">
+                              {product.title}
+                            </p>
+                            <p className="text-sm">
+                              {product.priceMin.toFixed(2)} {product.currency}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                      {searchTotal > 8 && (
+                        <button
+                          onClick={handleViewAllResults}
+                          className="mt-6 w-full py-3 border border-black text-sm font-medium hover:bg-black hover:text-white transition-colors"
+                        >
+                          {t("search.viewAllResults")} ({searchTotal})
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-neutral-500 text-center py-8">
+                      {t("search.noResults")}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
