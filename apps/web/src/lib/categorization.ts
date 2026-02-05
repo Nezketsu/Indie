@@ -265,7 +265,7 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
         "poster", "print", "art print",
         "sticker", "stickers", "sticker pack",
         "keychain", "key chain", "keyring",
-        "pin", "pins", "enamel pin",
+        "enamel pin", "pin set", "pin pack", "lapel pin",
         "patch", "patches",
         "lighter",
         "ashtray",
@@ -288,7 +288,10 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
 // Words that should NOT trigger certain categories (exclusions)
 const CATEGORY_EXCLUSIONS: Record<string, string[]> = {
     "Accessories": ["chain link", "stormchaser", "windchaser", "chainsaw"],
-    "Tops": ["hoodie", "jacket", "pants", "shorts", "coat"], // Avoid matching "shirt" in compound words
+    "Tops": ["hoodie", "jacket", "pants", "shorts", "coat"],
+    "Hoodies & Sweats": ["jacket", "coat", "parka", "vest", "gilet"],
+    "Knitwear": ["jacket", "coat"],
+    "Jackets & Coats": ["coat-of-arms"],
     "Shorts": ["longsleeve", "long sleeve", "shortcut"],
 };
 
