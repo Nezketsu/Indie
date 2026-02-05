@@ -102,7 +102,30 @@ else
     warn "Could not fetch queue stats (HTTP $STATS_HTTP_CODE)"
 fi
 
+# Step 4: Link products to categories
+log ""
+log "Step 4: Linking products to categories..."
+
+LINK_RESPONSE=$(curl -s -w "\n%{http_code}" \
+    -X POST "${WEB_URL}/api/sync/link-categories" \
+    -H "Authorization: Bearer ${CRON_SECRET}" \
+    -H "Content-Type: application/json" \
+    --max-time 300)
+
+LINK_HTTP_CODE=$(echo "$LINK_RESPONSE" | tail -n1)
+LINK_BODY=$(echo "$LINK_RESPONSE" | sed '$d')
+
+if [ "$LINK_HTTP_CODE" -eq 200 ]; then
+    log "Category linking completed successfully!"
+    log "Response: $LINK_BODY"
+else
+    warn "Category linking failed with HTTP code: $LINK_HTTP_CODE"
+    warn "Response: $LINK_BODY"
+    # Don't exit on failure - this is not critical
+fi
+
 log ""
 log "=========================================="
 log "Daily sync and classification job completed"
 log "=========================================="
+
