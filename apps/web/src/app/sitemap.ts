@@ -6,7 +6,7 @@ import { routing } from '@/i18n/routing';
 export const dynamic = 'force-dynamic';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://indiemarket.co';
+    const baseUrl = 'https://indiemarket.co';
 
     // Fetch brands with error handling for build time
     let brandsData: { slug: string }[] = [];
