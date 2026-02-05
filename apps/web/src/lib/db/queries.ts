@@ -37,21 +37,30 @@ export async function getProducts(options?: {
     }
   }
 
-  // Filter by category (productType)
+  // Filter by category (using product_categories junction table)
   if (category) {
     // Categories can be comma-separated for multiple selection
-    const categoryNames = category.split(",").map(c => c.trim());
-    if (categoryNames.length === 1) {
-      // Match the category name (case-insensitive via slug comparison)
+    const categorySlugs = category.split(",").map(c => c.trim());
+    if (categorySlugs.length === 1) {
+      // Single category filter - check if product is linked to this category
       conditions.push(
-        sql`LOWER(REPLACE(${products.productType}, ' ', '-')) = LOWER(${categoryNames[0]})`
+        sql`EXISTS (
+          SELECT 1 FROM product_categories pc
+          JOIN categories c ON pc.category_id = c.id
+          WHERE pc.product_id = ${products.id}
+          AND LOWER(c.slug) = LOWER(${categorySlugs[0]})
+        )`
       );
     } else {
-      // Multiple categories
-      const categoryConditions = categoryNames.map(
-        c => sql`LOWER(REPLACE(${products.productType}, ' ', '-')) = LOWER(${c})`
+      // Multiple categories (OR condition)
+      conditions.push(
+        sql`EXISTS (
+          SELECT 1 FROM product_categories pc
+          JOIN categories c ON pc.category_id = c.id
+          WHERE pc.product_id = ${products.id}
+          AND LOWER(c.slug) IN (${sql.join(categorySlugs.map(s => sql`LOWER(${s})`), sql`, `)})
+        )`
       );
-      conditions.push(sql`(${sql.join(categoryConditions, sql` OR `)})`);
     }
   }
 
@@ -262,15 +271,22 @@ export async function getBrandBySlug(slug: string) {
 }
 
 export async function getFilterOptions() {
-  // Get categories (product types) - only count available products
-  const productTypes = await db
+  // Get categories from the categories table with product counts
+  const categoriesWithCount = await db
     .select({
-      name: products.productType,
-      count: sql<number>`count(*)`,
+      id: categories.id,
+      name: categories.name,
+      slug: categories.slug,
+      count: sql<number>`(
+        SELECT COUNT(DISTINCT pc.product_id)
+        FROM product_categories pc
+        JOIN products p ON pc.product_id = p.id
+        WHERE pc.category_id = ${categories.id}
+        AND p.is_available = true
+      )`,
     })
-    .from(products)
-    .where(sql`${products.productType} IS NOT NULL AND ${products.productType} != '' AND ${products.isAvailable} = true`)
-    .groupBy(products.productType);
+    .from(categories)
+    .orderBy(categories.name);
 
   // Get brands with counts - only count available products
   const brandsWithCount = await db
@@ -321,10 +337,10 @@ export async function getFilterOptions() {
     });
 
   return {
-    categories: productTypes.map((pt) => ({
-      slug: pt.name?.toLowerCase().replace(/\s+/g, "-") || "",
-      name: pt.name || "",
-      count: Number(pt.count),
+    categories: categoriesWithCount.map((cat) => ({
+      slug: cat.slug,
+      name: cat.name,
+      count: Number(cat.count),
     })),
     brands: brandsWithCount.map((b) => ({
       slug: b.slug,
