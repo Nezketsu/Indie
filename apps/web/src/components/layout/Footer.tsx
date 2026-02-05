@@ -1,24 +1,10 @@
-import Link from "next/link";
-
-const footerLinks = {
-  shop: [
-    { name: "New Arrivals", href: "/new-arrivals" },
-    { name: "All Products", href: "/products" },
-    { name: "Brands", href: "/brands" },
-  ],
-  categories: [
-    { name: "Clothing", href: "/products?category=clothing" },
-    { name: "Accessories", href: "/products?category=accessories" },
-    { name: "Footwear", href: "/products?category=footwear" },
-  ],
-  info: [
-    { name: "About Us", href: "/about" },
-    { name: "Contact", href: "/contact" },
-    { name: "Privacy Policy", href: "/privacy" },
-  ],
-};
+import { Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 
 export function Footer() {
+  const t = useTranslations("footer");
+  const tNav = useTranslations("nav");
+
   return (
     <footer className="border-t border-neutral-200 mt-24">
       <div className="container mx-auto px-4 py-16">
@@ -29,64 +15,106 @@ export function Footer() {
               INDIEMARKET
             </Link>
             <p className="mt-4 text-sm text-neutral-500 leading-relaxed">
-              Discover curated products from the best independent brands.
+              {t("tagline")}
             </p>
           </div>
 
           {/* Shop */}
           <div>
             <h3 className="text-xs uppercase tracking-widest font-medium mb-6">
-              Shop
+              {t("shop")}
             </h3>
             <ul className="space-y-3">
-              {footerLinks.shop.map((link) => (
-                <li key={link.name}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-neutral-500 hover:text-black hover:underline underline-offset-4 transition-colors"
-                  >
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
+              <li>
+                <Link
+                  href="/new-arrivals"
+                  className="text-sm text-neutral-500 hover:text-black hover:underline underline-offset-4 transition-colors"
+                >
+                  {tNav("newArrivals")}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/products"
+                  className="text-sm text-neutral-500 hover:text-black hover:underline underline-offset-4 transition-colors"
+                >
+                  {tNav("allProducts")}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/brands"
+                  className="text-sm text-neutral-500 hover:text-black hover:underline underline-offset-4 transition-colors"
+                >
+                  {tNav("brands")}
+                </Link>
+              </li>
             </ul>
           </div>
 
           {/* Categories */}
           <div>
             <h3 className="text-xs uppercase tracking-widest font-medium mb-6">
-              Categories
+              {t("categories")}
             </h3>
             <ul className="space-y-3">
-              {footerLinks.categories.map((link) => (
-                <li key={link.name}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-neutral-500 hover:text-black hover:underline underline-offset-4 transition-colors"
-                  >
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
+              <li>
+                <Link
+                  href="/products?category=clothing"
+                  className="text-sm text-neutral-500 hover:text-black hover:underline underline-offset-4 transition-colors"
+                >
+                  {tNav("clothing")}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/products?category=accessories"
+                  className="text-sm text-neutral-500 hover:text-black hover:underline underline-offset-4 transition-colors"
+                >
+                  {tNav("accessories")}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/products?category=footwear"
+                  className="text-sm text-neutral-500 hover:text-black hover:underline underline-offset-4 transition-colors"
+                >
+                  {tNav("footwear")}
+                </Link>
+              </li>
             </ul>
           </div>
 
           {/* Info */}
           <div>
             <h3 className="text-xs uppercase tracking-widest font-medium mb-6">
-              Information
+              {t("information")}
             </h3>
             <ul className="space-y-3">
-              {footerLinks.info.map((link) => (
-                <li key={link.name}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-neutral-500 hover:text-black hover:underline underline-offset-4 transition-colors"
-                  >
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
+              <li>
+                <Link
+                  href="/about"
+                  className="text-sm text-neutral-500 hover:text-black hover:underline underline-offset-4 transition-colors"
+                >
+                  {t("aboutUs")}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/contact"
+                  className="text-sm text-neutral-500 hover:text-black hover:underline underline-offset-4 transition-colors"
+                >
+                  {t("contact")}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/privacy"
+                  className="text-sm text-neutral-500 hover:text-black hover:underline underline-offset-4 transition-colors"
+                >
+                  {t("privacyPolicy")}
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
@@ -94,7 +122,7 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="mt-16 pt-8 border-t border-neutral-200">
           <p className="text-xs text-neutral-400 text-center uppercase tracking-widest">
-            &copy; {new Date().getFullYear()} IndieMarket. All rights reserved.
+            {t("copyright", { year: new Date().getFullYear() })}
           </p>
         </div>
       </div>

@@ -200,5 +200,30 @@
     "description": "The page you're looking for doesn't exist or has been moved.",
     "backHome": "Back to Home",
     "browseProducts": "Browse Products"
+  },
+  "about": {
+    "title": "About Us",
+    "intro": "IndieMarket exists to help you shop differently. We bring together independent brands that produce responsibly, without overproduction, with genuine attention to quality and ethics.",
+    "missionTitle": "Our Mission",
+    "missionText": "Many people want to move away from fast fashion but don't know where to start. The world of independent brands is still too niche and scattered. Our mission is simple: centralize these brands in one place to give them the visibility they deserve and offer you a real choice.",
+    "valuesTitle": "Our Vision",
+    "valuesText": "We believe that by making it easier to access small, committed brands, we can change consumption habits. Every purchase on IndieMarket is direct support to passionate creators who truly care about their products and pay attention to every step of the production process."
+  },
+  "contact": {
+    "title": "Contact",
+    "intro": "Have a question, suggestion, or need help? Don't hesitate to reach out. Our team will get back to you as soon as possible.",
+    "emailTitle": "Email"
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "lastUpdated": "Last updated: February 2026",
+    "collectTitle": "Data Collection",
+    "collectText": "We only collect data necessary for our services to function properly: account information (email, name), browsing data, and preferences.",
+    "useTitle": "Data Usage",
+    "useText": "Your data is used to manage your account, personalize your experience, and improve our services. We never sell your data to third parties.",
+    "cookiesTitle": "Cookies",
+    "cookiesText": "We use essential cookies for the site to function and analytical cookies to understand how you use IndieMarket.",
+    "contactTitle": "Contact",
+    "contactText": "For any questions about your personal data, contact us at indiemarket@outlook.fr."
   }
 }

@@ -200,5 +200,30 @@
     "description": "La page que vous recherchez n'existe pas ou a été déplacée.",
     "backHome": "Retour à l'accueil",
     "browseProducts": "Parcourir les produits"
+  },
+  "about": {
+    "title": "À propos",
+    "intro": "IndieMarket existe pour vous aider à consommer autrement. Nous rassemblons des marques indépendantes qui produisent de manière responsable, sans surproduction, avec une vraie attention portée à la qualité et à l'éthique.",
+    "missionTitle": "Notre mission",
+    "missionText": "Beaucoup de personnes souhaitent s'éloigner de la fast fashion mais ne savent pas par où commencer. L'univers des marques indépendantes reste encore trop niché et dispersé. Notre mission est simple : centraliser ces marques en un seul endroit pour leur donner la visibilité qu'elles méritent et vous offrir un vrai choix.",
+    "valuesTitle": "Notre vision",
+    "valuesText": "Nous croyons qu'en facilitant l'accès aux petites marques engagées, nous pouvons changer les habitudes de consommation. Chaque achat sur IndieMarket est un soutien direct à des créateurs passionnés qui travaillent vraiment leurs produits et qui font attention à toute la chaîne de production."
+  },
+  "contact": {
+    "title": "Contact",
+    "intro": "Une question, une suggestion ou besoin d'aide ? N'hésitez pas à nous contacter. Notre équipe vous répondra dans les plus brefs délais.",
+    "emailTitle": "Email"
+  },
+  "privacy": {
+    "title": "Politique de confidentialité",
+    "lastUpdated": "Dernière mise à jour : Février 2026",
+    "collectTitle": "Données collectées",
+    "collectText": "Nous collectons uniquement les données nécessaires au bon fonctionnement de nos services : informations de compte (email, nom), données de navigation et préférences.",
+    "useTitle": "Utilisation des données",
+    "useText": "Vos données sont utilisées pour gérer votre compte, personnaliser votre expérience et améliorer nos services. Nous ne vendons jamais vos données à des tiers.",
+    "cookiesTitle": "Cookies",
+    "cookiesText": "Nous utilisons des cookies essentiels pour le fonctionnement du site et des cookies analytiques pour comprendre comment vous utilisez IndieMarket.",
+    "contactTitle": "Contact",
+    "contactText": "Pour toute question concernant vos données personnelles, contactez-nous à indiemarket@outlook.fr."
   }
 }
