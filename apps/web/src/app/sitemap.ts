@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next';
-import { getBrands } from '@/lib/db/queries';
+import { getBrands, getProducts } from '@/lib/db/queries';
 import { routing } from '@/i18n/routing';
 
 // Force dynamic rendering at runtime (not during build)
@@ -8,10 +8,16 @@ export const dynamic = 'force-dynamic';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const baseUrl = 'https://indiemarket.co';
 
-    // Fetch brands with error handling for build time
+    // Fetch data with error handling for build time
     let brandsData: { slug: string }[] = [];
+    let productsData: { slug: string }[] = [];
     try {
-        brandsData = await getBrands();
+        const [brands, products] = await Promise.all([
+            getBrands(),
+            getProducts({ limit: 1000 }),
+        ]);
+        brandsData = brands;
+        productsData = products.products;
     } catch {
         // DB not available during build - return static routes only
     }
@@ -21,8 +27,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         '/brands',
         '/products',
         '/new-arrivals',
-        '/login',
-        '/register'
+        '/about',
+        '/contact',
+        '/privacy',
     ];
 
     const routes: MetadataRoute.Sitemap = [];
@@ -48,6 +55,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                 lastModified: new Date(),
                 changeFrequency: 'weekly',
                 priority: 0.7,
+            });
+        }
+
+        // Add product routes
+        for (const product of productsData) {
+            routes.push({
+                url: `${baseUrl}${localePrefix}/products/${product.slug}`,
+                lastModified: new Date(),
+                changeFrequency: 'weekly',
+                priority: 0.6,
             });
         }
     }

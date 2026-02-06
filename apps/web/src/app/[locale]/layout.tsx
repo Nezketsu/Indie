@@ -17,15 +17,29 @@ export async function generateMetadata({ params }: Omit<Props, 'children'>): Pro
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'metadata' });
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://indiemarket.co';
+
   return {
-    title: t('title'),
+    title: {
+      default: t('title'),
+      template: '%s | IndieMarket',
+    },
     description: t('description'),
     keywords: t('keywords').split(',').map(k => k.trim()),
+    alternates: {
+      canonical: locale === 'fr' ? baseUrl : `${baseUrl}/en`,
+      languages: {
+        'fr': baseUrl,
+        'en': `${baseUrl}/en`,
+      },
+    },
     openGraph: {
       title: t('title'),
       description: t('description'),
       type: 'website',
-      locale: locale,
+      locale: locale === 'fr' ? 'fr_FR' : 'en_US',
+      url: locale === 'fr' ? baseUrl : `${baseUrl}/en`,
+      siteName: 'IndieMarket',
     },
     twitter: {
       card: 'summary_large_image',
@@ -60,20 +74,36 @@ export default async function LocaleLayout({ children, params }: Props) {
           <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{
-              __html: JSON.stringify({
-                '@context': 'https://schema.org',
-                '@type': 'WebSite',
-                name: 'IndieMarket',
-                url: process.env.NEXT_PUBLIC_APP_URL || 'https://indiemarket.co',
-                potentialAction: {
-                  '@type': 'SearchAction',
-                  target: {
-                    '@type': 'EntryPoint',
-                    urlTemplate: `${process.env.NEXT_PUBLIC_APP_URL || 'https://indiemarket.co'}/${locale}/products?search={search_term_string}`
-                  },
-                  'query-input': 'required name=search_term_string'
+              __html: JSON.stringify([
+                {
+                  '@context': 'https://schema.org',
+                  '@type': 'WebSite',
+                  name: 'IndieMarket',
+                  url: process.env.NEXT_PUBLIC_APP_URL || 'https://indiemarket.co',
+                  potentialAction: {
+                    '@type': 'SearchAction',
+                    target: {
+                      '@type': 'EntryPoint',
+                      urlTemplate: `${process.env.NEXT_PUBLIC_APP_URL || 'https://indiemarket.co'}/${locale}/products?search={search_term_string}`
+                    },
+                    'query-input': 'required name=search_term_string'
+                  }
+                },
+                {
+                  '@context': 'https://schema.org',
+                  '@type': 'Organization',
+                  name: 'IndieMarket',
+                  url: 'https://indiemarket.co',
+                  logo: 'https://indiemarket.co/icon',
+                  description: 'Marketplace curatée avec les meilleurs produits des marques de mode indépendantes.',
+                  contactPoint: {
+                    '@type': 'ContactPoint',
+                    email: 'indiemarket@outlook.fr',
+                    contactType: 'customer service',
+                    availableLanguage: ['French', 'English']
+                  }
                 }
-              })
+              ])
             }}
           />
         </WishlistProvider>

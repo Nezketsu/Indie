@@ -26,8 +26,9 @@ export async function generateMetadata({
 }: {
     params: Promise<{ slug: string; locale: string }>;
 }) {
-    const { slug } = await params;
+    const { slug, locale } = await params;
     const product = await getProductBySlug(slug);
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://indiemarket.co';
 
     if (!product) {
         return {
@@ -35,9 +36,35 @@ export async function generateMetadata({
         };
     }
 
+    const localePrefix = locale === 'fr' ? '' : `/${locale}`;
+    const url = `${baseUrl}${localePrefix}/products/${slug}`;
+    const brandSuffix = product.brand ? ` par ${product.brand.name}` : '';
+    const title = `${product.title}${brandSuffix}`;
+    const plainDescription = product.description?.replace(/<[^>]*>/g, '') || '';
+    const description = plainDescription.slice(0, 160)
+        || (locale === 'fr'
+            ? `Achetez ${product.title} sur IndieMarket, marketplace de marques indépendantes.`
+            : `Shop ${product.title} on IndieMarket, independent brands marketplace.`);
+
     return {
-        title: `${product.title} | Indie Marketplace`,
-        description: product.description?.slice(0, 160) || `Shop ${product.title} from Indie Marketplace`,
+        title,
+        description,
+        alternates: {
+            canonical: url,
+            languages: {
+                'fr': `${baseUrl}/products/${slug}`,
+                'en': `${baseUrl}/en/products/${slug}`,
+            },
+        },
+        openGraph: {
+            title,
+            description,
+            url,
+            type: 'website',
+            ...(product.images?.[0]?.src && {
+                images: [{ url: product.images[0].src, alt: product.title }],
+            }),
+        },
     };
 }
 
@@ -84,8 +111,63 @@ export default async function ProductPage({
         ? `${product.brand.websiteUrl}/products/${product.slug}`
         : null;
 
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://indiemarket.co';
+    const localePrefix = locale === 'fr' ? '' : `/${locale}`;
+
+    const productJsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name: product.title,
+        ...(product.description && { description: product.description.replace(/<[^>]*>/g, '').slice(0, 500) }),
+        ...(product.images?.[0]?.src && { image: product.images.map(img => img.src) }),
+        ...(product.brand && {
+            brand: {
+                '@type': 'Brand',
+                name: product.brand.name,
+            }
+        }),
+        offers: {
+            '@type': 'Offer',
+            url: `${baseUrl}${localePrefix}/products/${product.slug}`,
+            priceCurrency: product.currency || 'EUR',
+            price: priceMin,
+            availability: product.isAvailable
+                ? 'https://schema.org/InStock'
+                : 'https://schema.org/OutOfStock',
+        },
+    };
+
+    const breadcrumbJsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+            {
+                '@type': 'ListItem',
+                position: 1,
+                name: locale === 'fr' ? 'Accueil' : 'Home',
+                item: `${baseUrl}${localePrefix}`,
+            },
+            {
+                '@type': 'ListItem',
+                position: 2,
+                name: locale === 'fr' ? 'Produits' : 'Products',
+                item: `${baseUrl}${localePrefix}/products`,
+            },
+            {
+                '@type': 'ListItem',
+                position: 3,
+                name: product.title,
+                item: `${baseUrl}${localePrefix}/products/${product.slug}`,
+            },
+        ],
+    };
+
     return (
         <div className="min-h-screen bg-white">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify([productJsonLd, breadcrumbJsonLd]) }}
+            />
             <div className="container mx-auto px-4 py-6">
                 <Link
                     href="/products"

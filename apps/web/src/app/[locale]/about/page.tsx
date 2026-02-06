@@ -1,4 +1,22 @@
+import { type Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://indiemarket.co';
+  const localePrefix = locale === 'fr' ? '' : `/${locale}`;
+
+  return {
+    title: locale === 'fr' ? 'À propos' : 'About',
+    description: locale === 'fr'
+      ? 'IndieMarket rassemble des marques indépendantes qui produisent de manière responsable. Découvrez notre mission.'
+      : 'IndieMarket gathers independent brands that produce responsibly. Discover our mission.',
+    alternates: {
+      canonical: `${baseUrl}${localePrefix}/about`,
+      languages: { 'fr': `${baseUrl}/about`, 'en': `${baseUrl}/en/about` },
+    },
+  };
+}
 
 export default async function AboutPage() {
   const t = await getTranslations('about');

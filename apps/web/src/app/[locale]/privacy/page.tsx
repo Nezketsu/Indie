@@ -1,4 +1,22 @@
+import { type Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://indiemarket.co';
+  const localePrefix = locale === 'fr' ? '' : `/${locale}`;
+
+  return {
+    title: locale === 'fr' ? 'Politique de confidentialité' : 'Privacy Policy',
+    description: locale === 'fr'
+      ? 'Politique de confidentialité d\'IndieMarket. Découvrez comment nous protégeons vos données personnelles.'
+      : 'IndieMarket privacy policy. Learn how we protect your personal data.',
+    alternates: {
+      canonical: `${baseUrl}${localePrefix}/privacy`,
+      languages: { 'fr': `${baseUrl}/privacy`, 'en': `${baseUrl}/en/privacy` },
+    },
+  };
+}
 
 export default async function PrivacyPage() {
   const t = await getTranslations('privacy');

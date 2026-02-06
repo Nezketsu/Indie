@@ -44,8 +44,55 @@ export default async function BrandPage({ params, searchParams }: PageProps) {
 
   const totalPages = Math.ceil(productsData.total / PRODUCTS_PER_PAGE);
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://indiemarket.co';
+  const localePrefix = locale === 'fr' ? '' : `/${locale}`;
+
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: locale === 'fr' ? 'Accueil' : 'Home',
+        item: `${baseUrl}${localePrefix}`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: locale === 'fr' ? 'Marques' : 'Brands',
+        item: `${baseUrl}${localePrefix}/brands`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: brand.name,
+        item: `${baseUrl}${localePrefix}/brands/${slug}`,
+      },
+    ],
+  };
+
+  const brandJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Brand',
+    name: brand.name,
+    url: `${baseUrl}${localePrefix}/brands/${slug}`,
+    ...(brand.description && { description: brand.description }),
+    ...(brand.country && {
+      address: {
+        '@type': 'PostalAddress',
+        addressCountry: brand.country,
+      }
+    }),
+    ...(brand.websiteUrl && { sameAs: [brand.websiteUrl] }),
+  };
+
   return (
     <div className="container mx-auto px-4 py-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify([breadcrumbJsonLd, brandJsonLd]) }}
+      />
       <nav className="mb-8">
         <ol className="flex items-center gap-2 text-sm text-neutral-500">
           <li>
@@ -107,8 +154,9 @@ export default async function BrandPage({ params, searchParams }: PageProps) {
 }
 
 export async function generateMetadata({ params }: PageProps) {
-  const { slug } = await params;
+  const { slug, locale } = await params;
   const brand = await getBrandBySlug(slug);
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://indiemarket.co';
 
   if (!brand) {
     return {
@@ -116,8 +164,33 @@ export async function generateMetadata({ params }: PageProps) {
     };
   }
 
+  const localePrefix = locale === 'fr' ? '' : `/${locale}`;
+  const url = `${baseUrl}${localePrefix}/brands/${slug}`;
+
+  const title = locale === 'fr'
+    ? `${brand.name} - Marque indépendante`
+    : `${brand.name} - Independent Brand`;
+
+  const description = brand.description
+    || (locale === 'fr'
+      ? `Découvrez les produits de ${brand.name}, marque indépendante sur IndieMarket.`
+      : `Discover products from ${brand.name}, independent brand on IndieMarket.`);
+
   return {
-    title: `${brand.name} - Indie Marketplace`,
-    description: brand.description || `Shop products from ${brand.name}`,
+    title,
+    description,
+    alternates: {
+      canonical: url,
+      languages: {
+        'fr': `${baseUrl}/brands/${slug}`,
+        'en': `${baseUrl}/en/brands/${slug}`,
+      },
+    },
+    openGraph: {
+      title,
+      description,
+      url,
+      type: 'website',
+    },
   };
 }

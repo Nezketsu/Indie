@@ -14,16 +14,28 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "IndieMarket - Discover Independent Brands",
+  metadataBase: new URL('https://indiemarket.co'),
+  title: {
+    default: "IndieMarket - Découvrez les marques indépendantes",
+    template: "%s | IndieMarket",
+  },
   description:
-    "Curated marketplace featuring the best products from independent fashion brands. Shop clothing, accessories, and footwear from emerging designers.",
+    "Marketplace curatée avec les meilleurs produits des marques de mode indépendantes. Découvrez vêtements, accessoires et chaussures de créateurs émergents.",
   keywords: [
+    "marques indépendantes",
+    "mode indépendante",
+    "créateurs mode",
+    "marques émergentes",
+    "marketplace mode",
     "indie brands",
     "independent fashion",
-    "designer clothing",
-    "emerging brands",
-    "curated marketplace",
+    "slow fashion",
+    "mode éthique",
   ],
+  icons: {
+    icon: '/icon',
+    apple: '/apple-icon',
+  },
 };
 
 export default async function RootLayout({
