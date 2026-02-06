@@ -6,6 +6,12 @@ import { WishlistButton } from "./WishlistButton";
 import { AdminProductTypeEditor } from "@/components/admin/AdminProductTypeEditor";
 import { AdminDeleteButton } from "@/components/admin/AdminDeleteButton";
 
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 interface ProductCardProps {
   product: {
     id: string;
@@ -20,11 +26,13 @@ interface ProductCardProps {
     isAvailable: boolean;
     isNew?: boolean;
     productType?: string | null;
+    categoryId?: string | null;
   };
   isAdmin?: boolean;
+  categories?: Category[];
 }
 
-export function ProductCard({ product, isAdmin = false }: ProductCardProps) {
+export function ProductCard({ product, isAdmin = false, categories }: ProductCardProps) {
   const hasDiscount = Boolean(
     product.compareAtPrice && product.compareAtPrice > product.priceMin
   );
@@ -82,7 +90,9 @@ export function ProductCard({ product, isAdmin = false }: ProductCardProps) {
           <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1">
             <AdminProductTypeEditor
               productId={product.id}
-              currentType={product.productType || null}
+              currentCategoryId={product.categoryId || null}
+              currentCategoryName={product.productType || null}
+              categories={categories || []}
             />
             <AdminDeleteButton
               productId={product.id}

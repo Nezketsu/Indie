@@ -31,7 +31,7 @@ interface Product {
 }
 
 interface FilterOptions {
-  categories: { slug: string; name: string; count: number }[];
+  categories: { id: string; slug: string; name: string; count: number }[];
   brands: { slug: string; name: string; count: number }[];
   sizes: { value: string; label: string; count: number }[];
   priceRange: { min: number; max: number };
@@ -180,7 +180,7 @@ export function ProductsClientWrapper({
           </div>
         </div>
 
-        <ProductGrid products={initialProducts} isAdmin={isAdmin} />
+        <ProductGrid products={initialProducts} isAdmin={isAdmin} categories={filterOptions.categories} />
 
         {totalPages > 1 && (
           <div className="mt-16 flex justify-center gap-2">

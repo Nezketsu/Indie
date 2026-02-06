@@ -13,14 +13,22 @@ interface Product {
   isAvailable: boolean;
   isNew?: boolean;
   productType?: string | null;
+  categoryId?: string | null;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
 }
 
 interface ProductGridProps {
   products: Product[];
   isAdmin?: boolean;
+  categories?: Category[];
 }
 
-export function ProductGrid({ products, isAdmin = false }: ProductGridProps) {
+export function ProductGrid({ products, isAdmin = false, categories }: ProductGridProps) {
   if (products.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24">
@@ -34,7 +42,7 @@ export function ProductGrid({ products, isAdmin = false }: ProductGridProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
       {products.map((product) => (
-        <ProductCard key={product.id} product={product} isAdmin={isAdmin} />
+        <ProductCard key={product.id} product={product} isAdmin={isAdmin} categories={categories} />
       ))}
     </div>
   );

@@ -170,6 +170,28 @@ export async function getProducts(options?: {
         .orderBy(productImages.position)
       : [];
 
+  // Get categories for products from product_categories junction table
+  const productCats =
+    productIds.length > 0
+      ? await db
+        .select({
+          productId: productCategories.productId,
+          categoryId: categories.id,
+          categoryName: categories.name,
+        })
+        .from(productCategories)
+        .leftJoin(categories, eq(productCategories.categoryId, categories.id))
+        .where(inArray(productCategories.productId, productIds))
+      : [];
+
+  // Map product ID -> category info
+  const catByProduct: Record<string, { id: string; name: string }> = {};
+  for (const pc of productCats) {
+    if (pc.categoryId && pc.categoryName && !catByProduct[pc.productId]) {
+      catByProduct[pc.productId] = { id: pc.categoryId, name: pc.categoryName };
+    }
+  }
+
   // Group images by product
   const imagesByProduct = images.reduce((acc, img) => {
     if (!acc[img.productId]) acc[img.productId] = [];
@@ -188,7 +210,8 @@ export async function getProducts(options?: {
     compareAtPrice: p.compareAtPrice ? parseFloat(p.compareAtPrice) : null,
     currency: p.currency || "EUR",
     isAvailable: p.isAvailable ?? true,
-    productType: p.productType,
+    productType: p.productType || catByProduct[p.id]?.name || null,
+    categoryId: catByProduct[p.id]?.id || null,
     brand: {
       name: p.brandName || "",
       slug: p.brandSlug || "",
@@ -345,6 +368,7 @@ export async function getFilterOptions() {
 
   return {
     categories: categoriesWithCount.map((cat) => ({
+      id: cat.id,
       slug: cat.slug,
       name: cat.name,
       count: Number(cat.count),

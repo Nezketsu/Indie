@@ -3,48 +3,44 @@
 import { useState } from "react";
 import { Edit2, Check, X } from "lucide-react";
 
-// Standard product types matching the categorization system
-const PRODUCT_TYPES = [
-    "Tops",
-    "Hoodies & Sweats",
-    "Knitwear",
-    "Jackets & Coats",
-    "Pants",
-    "Shorts",
-    "Footwear",
-    "Accessories",
-    "Lifestyle",
-    "Packs & Boxes",
-    "Other",
-];
+interface Category {
+    id: string;
+    name: string;
+    slug: string;
+}
 
 interface AdminProductTypeEditorProps {
     productId: string;
-    currentType: string | null;
+    currentCategoryId: string | null;
+    currentCategoryName: string | null;
+    categories: Category[];
 }
 
 export function AdminProductTypeEditor({
     productId,
-    currentType,
+    currentCategoryId,
+    currentCategoryName,
+    categories,
 }: AdminProductTypeEditorProps) {
     const [isEditing, setIsEditing] = useState(false);
-    const [selectedType, setSelectedType] = useState(currentType || "");
+    const [selectedCategoryId, setSelectedCategoryId] = useState(currentCategoryId || "");
     const [saving, setSaving] = useState(false);
-    const [savedType, setSavedType] = useState(currentType);
+    const [savedName, setSavedName] = useState(currentCategoryName);
 
     const handleSave = async () => {
         setSaving(true);
         try {
-            const response = await fetch(`/api/admin/products/${productId}/type`, {
+            const response = await fetch(`/api/admin/products/${productId}/category`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ productType: selectedType }),
+                body: JSON.stringify({ categoryId: selectedCategoryId || null }),
             });
 
             if (response.ok) {
-                setSavedType(selectedType);
+                const matched = categories.find((c) => c.id === selectedCategoryId);
+                setSavedName(matched?.name || null);
                 setIsEditing(false);
             }
         } catch (error) {
@@ -55,7 +51,7 @@ export function AdminProductTypeEditor({
     };
 
     const handleCancel = () => {
-        setSelectedType(savedType || "");
+        setSelectedCategoryId(currentCategoryId || "");
         setIsEditing(false);
     };
 
@@ -70,7 +66,7 @@ export function AdminProductTypeEditor({
                 className="flex items-center gap-1 px-2 py-1 bg-blue-500 text-white text-[10px] rounded hover:bg-blue-600 transition-colors"
             >
                 <Edit2 className="w-3 h-3" />
-                {savedType || "No type"}
+                {savedName || "No type"}
             </button>
         );
     }
@@ -84,15 +80,15 @@ export function AdminProductTypeEditor({
             }}
         >
             <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
+                value={selectedCategoryId}
+                onChange={(e) => setSelectedCategoryId(e.target.value)}
                 disabled={saving}
                 className="px-2 py-1 text-xs border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[100px]"
             >
                 <option value="">-- None --</option>
-                {PRODUCT_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                        {type}
+                {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                        {cat.name}
                     </option>
                 ))}
             </select>
